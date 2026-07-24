@@ -256,15 +256,39 @@ struct PixelBufferSmokeTests {
     }
 
     @Test("Attachments are stored independently from pixel bytes")
-    func attachmentRoundTrip() {
+    func attachmentRoundTrip() throws {
         let attachments = CVBufferAttachments()
         let key = CVAttachmentKey(rawValue: "color-space")
+        let dimensions = try CVPixelDimensions(width: 1, height: 1)
+        let layout = try CVPackedPixelBufferLayout(
+            dimensions: dimensions,
+            pixelFormat: .bgra32,
+            bytesPerPixel: 4,
+            bytesPerRow: 4
+        )
+        let buffer = try CVPackedPixelBuffer(
+            layout: layout,
+            storage: try CVOwnedPixelBufferStorage(byteCount: 4),
+            attachments: attachments
+        )
 
-        attachments.setValue(.string("display-p3"), for: key)
-        #expect(attachments.value(for: key) == .string("display-p3"))
+        CVBufferSetAttachment(
+            buffer,
+            key,
+            .string("display-p3"),
+            .shouldPropagate
+        )
+        #expect(
+            CVBufferCopyAttachment(buffer, key)
+                == CVBufferAttachment(
+                    value: .string("display-p3"),
+                    mode: .shouldPropagate
+                )
+        )
+        #expect(CVBufferHasAttachment(buffer, key))
 
-        attachments.removeValue(for: key)
-        #expect(attachments.value(for: key) == nil)
+        CVBufferRemoveAttachment(buffer, key)
+        #expect(!CVBufferHasAttachment(buffer, key))
     }
 }
 

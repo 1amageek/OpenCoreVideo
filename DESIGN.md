@@ -251,13 +251,17 @@ boundary without discarding the underlying category used by tests and diagnostic
 2. [Complete] Implement pixel-format identifiers and immutable packed layout.
 3. [Complete] Implement owned and external in-memory storage leases.
 4. [Complete] Implement typed attachment and lifetime behavior.
+   Attachment modes, filtered copies, batch mutation, and propagation are
+   covered by portable behavior tests and an Apple differential fixture.
 5. [Complete] Implement `CVImageBuffer` and `CVPixelBuffer` access semantics.
 6. [Complete] Implement packed and planar behavior fixtures.
 7. [Complete] Implement the single-owner shared planar storage contract.
 8. [Pending] Implement pool allocation and thresholds.
 9. [Pending] Add browser, replay, and embedded storage integrations as separate
    modules.
-10. [Pending] Add external conformance tests against Apple Core Video.
+10. [In progress] Add external conformance tests against Apple Core Video.
+    Attachment replacement and propagation are covered; broader pixel-buffer
+    and pool behavior remains pending.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.

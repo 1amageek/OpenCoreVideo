@@ -23,6 +23,8 @@ Apple platforms should import Apple's `CoreVideo` framework.
 Read [DESIGN.md](DESIGN.md) before adding public API or storage implementations.
 Milestone status and test evidence are recorded in
 [IMPLEMENTATION_PROGRESS.md](IMPLEMENTATION_PROGRESS.md).
+Use [APPLE_API_TRACE.md](APPLE_API_TRACE.md) to distinguish implemented,
+partial, adapter-owned, and planned Apple Core Video families.
 
 ## Build
 

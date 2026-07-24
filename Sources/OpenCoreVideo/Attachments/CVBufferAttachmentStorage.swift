@@ -1,10 +1,20 @@
 public protocol CVBufferAttachmentStorage:
     CVPlatformConcurrencyContract
 {
-    func value(for key: CVAttachmentKey) -> CVAttachmentValue?
-    func setValue(
-        _ value: CVAttachmentValue,
+    func attachment(
+        for key: CVAttachmentKey
+    ) -> CVBufferAttachment?
+    func attachments(
+        for mode: CVAttachmentMode
+    ) -> [CVAttachmentKey: CVAttachmentValue]
+    func setAttachment(
+        _ attachment: CVBufferAttachment,
         for key: CVAttachmentKey
     )
-    func removeValue(for key: CVAttachmentKey)
+    func setAttachments(
+        _ attachments: [CVAttachmentKey: CVAttachmentValue],
+        mode: CVAttachmentMode
+    )
+    func removeAttachment(for key: CVAttachmentKey)
+    func removeAllAttachments()
 }

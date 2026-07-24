@@ -112,6 +112,8 @@ inside one owner.
 - [x] Read/write capability enforcement
 - [x] Balanced access coordination and recovery after lock failure
 - [x] Typed attachment storage
+- [x] Attachment propagation modes and Apple-shaped operations
+- [x] Attachment replacement and propagation differential test
 - [x] `CVImageBuffer` and `CVPixelBuffer` protocols
 - [x] Packed pixel-buffer implementation
 - [x] Planar layout and per-plane access
@@ -126,7 +128,7 @@ inside one owner.
 - [x] Single shared-owner lifetime verification
 - [x] Behavior Smoke tests
 - [ ] Buffer pools and allocation thresholds
-- [ ] Apple Core Video conformance fixtures
+- [ ] Broader Apple Core Video conformance fixtures
 - [ ] Platform storage integrations
 - [ ] Zero-copy binary attachment storage
 
@@ -139,6 +141,8 @@ inside one owner.
 | Reference memory storage | Complete |
 | Image and pixel-buffer contracts | Complete |
 | Attachment storage | Complete |
+| Attachment propagation | Complete |
+| Apple attachment differential fixture | Complete |
 | Native behavior Smoke | Complete |
 | WASM build | Complete |
 | Embedded Swift build | Complete |
@@ -151,7 +155,7 @@ Verified on 2026-07-24:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` passed 17 tests in 3 suites |
+| Native behavior | `xcodebuild test` passed 21 tests in 5 suites |
 | WASM | `swift build --swift-sdk swift-6.3.1-RELEASE_wasm --target OpenCoreVideo` passed |
 | Embedded Swift | `swift build --swift-sdk swift-6.3.1-RELEASE_wasm-embedded --target OpenCoreVideo` passed |
 
@@ -164,6 +168,9 @@ The behavior suite verifies:
 - lock/unlock ordering and recovery after backend lock failure;
 - exactly-once external release.
 - attachment set, lookup, and removal independent of pixel bytes.
+- attachment mode replacement, filtered snapshots, batch mutation, and removal;
+- propagation of only `shouldPropagate` metadata without touching pixel bytes;
+- attachment replacement and propagation parity with Apple Core Video;
 - owned planar layout, metadata wrappers, stable address, and byte round-trip;
 - external planar address identity and exactly-once release for every plane;
 - layout multiplication overflow and oversized-plane rejection;

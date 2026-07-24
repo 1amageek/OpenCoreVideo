@@ -1,9 +1,5 @@
 public protocol CVImageBuffer:
-    AnyObject,
-    CVPlatformConcurrencyContract
+    CVBuffer
 {
-    associatedtype AttachmentStorage: CVBufferAttachmentStorage
-
     var dimensions: CVPixelDimensions { get }
-    var attachments: AttachmentStorage { get }
 }
