@@ -1,4 +1,7 @@
-public struct CVBufferAttachment: Sendable, Equatable {
+public struct CVBufferAttachment:
+    CVPlatformConcurrencyContract,
+    Equatable
+{
     public let value: CVAttachmentValue
     public let mode: CVAttachmentMode
 

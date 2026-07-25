@@ -5,9 +5,10 @@
 This document is the normative design for the package. The package has completed
 the **packed, independent-plane, and shared planar lease Smoke stages**.
 Validated layouts, owned and external storage, scoped zero-copy CPU access,
-typed attachments, range and overlap validation, and exactly-once external
-release are implemented. Pools and Apple runtime conformance fixtures remain
-pending.
+typed and binary attachments, range and overlap validation, exactly-once
+external release, recyclable packed-buffer pools, and Apple runtime
+conformance fixtures are implemented. Platform-native concrete adapters remain
+in their integration packages.
 
 ## Apple API review
 
@@ -20,6 +21,10 @@ read with `remark` on 2026-07-24:
 - [CVPixelBuffer](https://developer.apple.com/documentation/corevideo/cvpixelbuffer)
 - [CVPixelBufferPool](https://developer.apple.com/documentation/corevideo/cvpixelbufferpool)
 - [CVPixelBufferLockFlags](https://developer.apple.com/documentation/corevideo/cvpixelbufferlockflags)
+- [kCVPixelBufferPoolAllocationThresholdKey](https://developer.apple.com/documentation/corevideo/kcvpixelbufferpoolallocationthresholdkey)
+- [kCVPixelBufferPoolMinimumBufferCountKey](https://developer.apple.com/documentation/corevideo/kcvpixelbufferpoolminimumbuffercountkey)
+- [kCVPixelBufferPoolMaximumBufferAgeKey](https://developer.apple.com/documentation/corevideo/kcvpixelbufferpoolmaximumbufferagekey)
+- [CVPixelBufferPoolFlush](https://developer.apple.com/documentation/corevideo/cvpixelbufferpoolflush(_:_:))
 
 Apple models a pixel buffer as an image-buffer reference with dimensions, pixel
 format, optional planes, attachments, and explicit lock/unlock access. The
@@ -36,6 +41,12 @@ The planar API surface was checked on 2026-07-24 against the installed Mac SDK:
   `CVPixelBufferGetBaseAddressOfPlane`.
 
 The local SDK, rather than recalled signatures, is the compatibility baseline.
+
+The pool API surface was rechecked on 2026-07-25 against
+`CVPixelBufferPool.h` and the documentation above. In particular, an allocation
+threshold prevents only new allocations and does not prevent an already
+allocated buffer from being recycled.
+`CVPixelBufferPoolFlushFlags.RawValue` follows `CVOptionFlags` as `UInt64`.
 
 ## Responsibility
 
@@ -119,9 +130,55 @@ The first storage contracts are:
   leases and buffer-wide access exclusion.
 - `CVLeasedPlanarPixelBuffer<StorageLease, Attachments>` for a single shared
   storage lease with buffer-wide access exclusion.
+- `CVNativePixelBufferStorage` for stable platform storage identity and scoped
+  access to an adapter-defined native handle.
+- `CVPackedPlatformStorageLease` and `CVPlanarPlatformStorageLease` for
+  platform-backed packed and single-owner planar resources.
 
 Concrete buffer and storage types are generic. This keeps Embedded Swift on
 static dispatch while preserving protocol-based extension points.
+
+### Pixel buffer pools
+
+```text
+CVPixelBufferPoolAllocator
+          │ allocates only on cache miss
+          ▼
+CVPixelBufferPoolCore
+    ├── checked-out storage ──► CVPooledPixelBufferStorage
+    └── available storage ◄──── buffer release
+```
+
+`CVPixelBufferPool` caches storage leases, not pixel-buffer objects. Each
+checkout constructs a new attachment-free buffer and each released wrapper
+returns its storage to the pool. This prevents attachments from leaking between
+frames while retaining the large pixel allocation without copying.
+
+Allocation count reservations occur under `CVStateLock`; allocation itself
+occurs after the lock is released. A failed or undersized allocation rolls the
+reservation back. Per-request thresholds reject only a required new allocation;
+an available lease is reused first. Age-based flush uses an injected
+nanosecond timestamp source, and `excessBuffers` removes every unused lease
+regardless of minimum count or age. The timestamp callback, allocator, release,
+and byte-access callbacks never execute while the pool mutex is held.
+The owned allocator creates a fresh access coordinator for each newly allocated
+storage lease so backend lock state is never shared accidentally across buffers.
+
+The pure-Swift configuration replaces Apple's Core Foundation dictionaries,
+allocator argument, out parameter, and status code with typed values, a returned
+buffer, and `CVPixelBufferError`. Unlike Apple's implicit one-second default
+age, the portable default does not age cached buffers because the shared target
+does not select a platform clock. Age eviction becomes active only when the
+caller supplies both `maximumBufferAgeNanoseconds` and a monotonic timestamp
+provider.
+
+### Binary attachments
+
+`CVBinaryAttachment` retains caller-provided byte storage and exposes it only
+through a scoped `Span`. Attachment lookup and propagation copy the small map
+entry and retain the same binary owner; they never materialize `[UInt8]` or
+duplicate the payload. Binary equality is storage identity equality, avoiding a
+hidden byte scan on the capture path.
 
 ### Planar compatibility surface
 
@@ -212,12 +269,17 @@ Invariants:
     storage array or per-plane owner wrappers.
 12. Shared-lease access capabilities and plane capacities are immutable for the
     lifetime of the buffer.
+13. Pool checkout and return never copy or clear pixel bytes implicitly.
+14. Allocation-threshold accounting includes checked-out and cached storage and
+    rolls back every failed reservation.
+15. Binary attachment propagation retains the original owner and does not copy
+    its bytes.
+16. Platform native handles are lent only inside the adapter's scoped callback.
 
-Short synchronous access state is protected through `CVStateLock`. Native Swift
-and WASM use `Mutex`; no `await` occurs while holding it. Embedded Swift has no
-`Mutex` in its standard-library profile, so its implementation is explicitly
-owner-isolated and non-`Sendable`. Embedded composition uses generic concrete
-types and must not share a buffer concurrently.
+Short synchronous access state is protected through `CVStateLock`, which uses
+`Synchronization.Mutex` on native Swift, WASM, and Embedded Swift. No `await`,
+allocator, timestamp provider, backend callback, byte-access closure, or release
+handler executes while the mutex is held.
 
 The lock protects only lease state. Backend access coordination and the caller's
 pixel-byte closure execute after the state lock is released.
@@ -256,12 +318,15 @@ boundary without discarding the underlying category used by tests and diagnostic
 5. [Complete] Implement `CVImageBuffer` and `CVPixelBuffer` access semantics.
 6. [Complete] Implement packed and planar behavior fixtures.
 7. [Complete] Implement the single-owner shared planar storage contract.
-8. [Pending] Implement pool allocation and thresholds.
-9. [Pending] Add browser, replay, and embedded storage integrations as separate
-   modules.
-10. [In progress] Add external conformance tests against Apple Core Video.
-    Attachment replacement and propagation are covered; broader pixel-buffer
-    and pool behavior remains pending.
+8. [Complete] Implement pool allocation, recycling, thresholds, and flush
+   behavior.
+9. [Complete] Define generic packed and planar native-storage integration
+   contracts. Browser, replay, embedded, and Jetson concrete adapters remain in
+   separate modules.
+10. [Complete] Add external conformance tests against Apple Core Video for
+    attachments, packed metadata and access, planar metadata, and pool
+    allocation-threshold behavior.
+11. [Complete] Implement retained zero-copy binary attachment storage.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.

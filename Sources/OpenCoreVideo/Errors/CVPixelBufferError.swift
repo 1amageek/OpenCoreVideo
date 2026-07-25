@@ -22,6 +22,9 @@ public enum CVPixelBufferError: Error, Sendable, Equatable {
     case planeAddressRangeOverflow(plane: Int)
     case overlappingPlaneStorage(first: Int, second: Int)
     case planarBufferRequiresPlaneAccess
+    case invalidMinimumBufferCount(Int)
+    case invalidAllocationThreshold(Int)
+    case wouldExceedAllocationThreshold(Int)
     case unsupportedAccess(CVPixelBufferAccessMode)
     case accessConflict(CVPixelBufferAccessMode)
     case platformAccessFailure(code: Int32)

@@ -168,6 +168,4 @@ internal final class CVPixelBufferMemoryLease<
     }
 }
 
-#if !hasFeature(Embedded)
 extension CVPixelBufferMemoryLease: Sendable {}
-#endif

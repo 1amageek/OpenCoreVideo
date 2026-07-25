@@ -88,16 +88,14 @@ No copy operation is implemented in the Smoke milestone. A future format
 conversion or persistent byte export must use an explicitly copy-named API and
 document why ownership cannot be retained across that boundary.
 
-Binary attachment values are intentionally deferred instead of being represented
-as `[UInt8]`. Their future contract must retain or borrow a byte-storage lease so
-large metadata cannot acquire implicit copy-on-write materialization on the
-capture path.
+Binary attachment values use `CVBinaryAttachment`. It retains the original byte
+owner, lends a `Span` in a scoped callback, and is shared by attachment
+propagation. No `[UInt8]` materialization occurs.
 
-On native Swift and WASM, the public concurrency marker requires `Sendable` and
-`CVStateLock` uses `Mutex`. Embedded Swift lacks `Mutex` and existential
-dispatch, so it uses owner-isolated state and generic concrete buffer/storage
-composition. Embedded buffers are intentionally not `Sendable` and must remain
-inside one owner.
+The public concurrency marker requires `Sendable`, and `CVStateLock` uses
+`Synchronization.Mutex` on native Swift, WASM, and Embedded Swift. Generic
+concrete buffer and storage composition still avoids existential dispatch on
+Embedded.
 
 ## Required implementation
 
@@ -127,10 +125,10 @@ inside one owner.
 - [x] Backend failure access-state recovery
 - [x] Single shared-owner lifetime verification
 - [x] Behavior Smoke tests
-- [ ] Buffer pools and allocation thresholds
-- [ ] Broader Apple Core Video conformance fixtures
-- [ ] Platform storage integrations
-- [ ] Zero-copy binary attachment storage
+- [x] Buffer pools, storage reuse, allocation thresholds, and flush behavior
+- [x] Broader Apple Core Video conformance fixtures
+- [x] Generic packed and planar platform storage integration contracts
+- [x] Zero-copy binary attachment storage
 
 ## Progress
 
@@ -148,16 +146,22 @@ inside one owner.
 | Embedded Swift build | Complete |
 | Planar behavior Smoke | Complete |
 | Shared planar lease Smoke | Complete |
+| Packed pixel buffer pool | Complete |
+| Pool threshold and flush behavior | Complete |
+| Platform native-storage contract | Complete |
+| Zero-copy binary attachment | Complete |
+| Packed, planar, and pool Apple differential fixtures | Complete |
 
 ## Test evidence
 
-Verified on 2026-07-24:
+Verified on 2026-07-25:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` passed 21 tests in 5 suites |
-| WASM | `swift build --swift-sdk swift-6.3.1-RELEASE_wasm --target OpenCoreVideo` passed |
-| Embedded Swift | `swift build --swift-sdk swift-6.3.1-RELEASE_wasm-embedded --target OpenCoreVideo` passed |
+| Native behavior | `xcodebuild test` with the Swift 6.4 snapshot `SWIFT_EXEC` passed 36 tests in 9 suites |
+| Swift 6.4 snapshot compile | `swift build --build-tests` passed |
+| WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
+| Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
 
 The behavior suite verifies:
 
@@ -183,12 +187,22 @@ The behavior suite verifies:
 - shared-lease plane count and capacity validation;
 - buffer-wide access exclusion and recovery after backend access failure;
 - read-only shared storage rejecting writes before backend access.
+- packed-pool storage reuse without byte copies or attachment reuse;
+- allocation threshold parity with Apple, including reuse at the threshold;
+- allocation reservation rollback and undersized-storage rejection;
+- age flush honoring minimum count and excess flush overriding it;
+- packed and planar platform storage identities and scoped native handles;
+- zero-copy binary attachment address identity, propagation, and exactly-once
+  release;
+- packed dimensions, format, stride, and scoped mutation parity with Apple;
+- bi-planar plane count, dimensions, and row-stride parity with Apple.
 
 ## Not implemented
 
-Buffer pools, concrete aggregate Core Foundation adapters, native handles,
-format conversion, browser video frames, DMA-BUF/NvBufSurface implementations,
-V4L2 mappings, CUDA interoperability, and Apple status-code wrappers remain
-outside the completed Smoke milestones. Their common single-owner planar
-contract is implemented. Unsupported capabilities must continue to fail
-explicitly; no placeholder buffer or silent copy is provided.
+Concrete aggregate Core Foundation adapters, format conversion, browser video
+frames, DMA-BUF/NvBufSurface implementations, V4L2 mappings, CUDA
+interoperability, Apple free-buffer notifications, and Apple status-code
+wrappers remain integration- or ABI-layer work. Their common packed, planar,
+native-handle, pool-allocation, and binary-attachment contracts are complete.
+Unsupported capabilities must continue to fail explicitly; no placeholder
+buffer or silent copy is provided.
