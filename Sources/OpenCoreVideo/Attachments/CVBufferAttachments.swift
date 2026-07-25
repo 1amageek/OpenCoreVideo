@@ -1,6 +1,4 @@
-public final class CVBufferAttachments:
-    CVBufferAttachmentStorage
-{
+public final class CVBufferAttachments {
     private let values: CVStateLock<
         [CVAttachmentKey: CVBufferAttachment]
     >
@@ -66,3 +64,7 @@ public final class CVBufferAttachments:
         }
     }
 }
+
+/// Exports the conformance used by downstream Embedded generic specializations.
+@export(interface)
+extension CVBufferAttachments: CVBufferAttachmentStorage {}

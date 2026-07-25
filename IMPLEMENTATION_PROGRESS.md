@@ -129,6 +129,7 @@ Embedded.
 - [x] Broader Apple Core Video conformance fixtures
 - [x] Generic packed and planar platform storage integration contracts
 - [x] Zero-copy binary attachment storage
+- [x] Embedded downstream attachment-witness linkage
 
 ## Progress
 
@@ -151,6 +152,7 @@ Embedded.
 | Platform native-storage contract | Complete |
 | Zero-copy binary attachment | Complete |
 | Packed, planar, and pool Apple differential fixtures | Complete |
+| Embedded cross-module generic construction | Complete |
 
 ## Test evidence
 
@@ -162,6 +164,7 @@ Verified on 2026-07-25:
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
+| Embedded downstream runtime | OpenCoreMedia constructed `CVPackedPixelBuffer` through the public constrained initializer, linked the OpenCoreVideo attachment witness, and completed its WASI Smoke executable |
 
 The behavior suite verifies:
 

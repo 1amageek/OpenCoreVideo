@@ -138,6 +138,13 @@ The first storage contracts are:
 Concrete buffer and storage types are generic. This keeps Embedded Swift on
 static dispatch while preserving protocol-based extension points.
 
+`CVBufferAttachments` is the public concrete attachment type used by the
+default packed and planar buffer initializers. It exports its interface so an
+Embedded downstream module can specialize those generic buffers while linking
+the `CVBufferAttachmentStorage` witness from OpenCoreVideo. This is a metadata
+linkage requirement only; attachment values and pixel storage retain their
+existing owners and are not materialized or copied.
+
 ### Pixel buffer pools
 
 ```text
@@ -280,6 +287,11 @@ Short synchronous access state is protected through `CVStateLock`, which uses
 `Synchronization.Mutex` on native Swift, WASM, and Embedded Swift. No `await`,
 allocator, timestamp provider, backend callback, byte-access closure, or release
 handler executes while the mutex is held.
+
+Public concrete types used as generic arguments by Embedded downstream modules
+must preserve their conformance metadata in the defining module. A downstream
+module must not recreate storage or erase the generic boundary merely to satisfy
+linkage.
 
 The lock protects only lease state. Backend access coordination and the caller's
 pixel-byte closure execute after the state lock is released.
