@@ -134,6 +134,40 @@ struct AttachmentPropagationTests {
         #expect(!CVBufferHasAttachment(buffer, second))
     }
 
+    @Test("Concurrent attachment updates preserve distinct keys")
+    func concurrentUpdates() async {
+        let attachments = CVBufferAttachments()
+        let updateCount = 64
+
+        await withTaskGroup(of: Void.self) { group in
+            for index in 0..<updateCount {
+                group.addTask {
+                    attachments.setAttachment(
+                        CVBufferAttachment(
+                            value: .integer(Int64(index)),
+                            mode: .shouldPropagate
+                        ),
+                        for: CVAttachmentKey(
+                            rawValue: "concurrent-\(index)"
+                        )
+                    )
+                }
+            }
+        }
+
+        let snapshot = attachments.attachments(
+            for: .shouldPropagate
+        )
+        #expect(snapshot.count == updateCount)
+        for index in 0..<updateCount {
+            #expect(
+                snapshot[
+                    CVAttachmentKey(rawValue: "concurrent-\(index)")
+                ] == .integer(Int64(index))
+            )
+        }
+    }
+
     private func makeBuffer() throws -> CVPackedPixelBuffer<
         CVOwnedPixelBufferStorage<
             CVNoOpPixelBufferAccessCoordinator

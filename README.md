@@ -31,7 +31,12 @@ partial, adapter-owned, and planned Apple Core Video families.
 
 ```bash
 swift build
-swift build
 swift build --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm
 swift build --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded
+swift run --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm \
+  OpenCoreVideoRuntimeSmoke
+swift run \
+  --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded \
+  -Xlinker /absolute/path/to/libswiftUnicodeDataTables.a \
+  OpenCoreVideoRuntimeSmoke
 ```

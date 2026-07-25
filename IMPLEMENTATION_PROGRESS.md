@@ -79,6 +79,7 @@ Foundation's descriptor-block ABI.
 | Shared planar lease access | 0 | Every plane scope borrows from one retained platform owner |
 | Planar metadata construction | Small metadata only | Layout values and storage references may be stored in arrays; plane bytes are never materialized |
 | Attachment lookup | Not a pixel-byte path | Typed metadata is stored independently |
+| Attachment snapshot / mutation | Small metadata only | Entry arrays use COW snapshots and generation-checked replacement; pixel and binary payload owners are retained, not copied |
 
 `withReadBytes` and `withWriteBytes` are the normal pixel-data boundaries. They
 must not materialize `Array`, `Data`, or another storage object. `Span` and
@@ -131,6 +132,8 @@ Embedded.
 - [x] Zero-copy binary attachment storage
 - [x] Recursive array and dictionary attachment values
 - [x] Embedded downstream attachment-witness linkage
+- [x] Regular-WASM attachment state runtime verification
+- [x] Concurrent attachment update verification
 
 ## Progress
 
@@ -154,6 +157,7 @@ Embedded.
 | Zero-copy binary attachment | Complete |
 | Packed, planar, and pool Apple differential fixtures | Complete |
 | Embedded cross-module generic construction | Complete |
+| Regular-WASM attachment runtime | Complete in debug and release configurations |
 
 ## Test evidence
 
@@ -161,12 +165,22 @@ Verified on 2026-07-25:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the Swift 6.4 snapshot `SWIFT_EXEC` passed 38 tests in 9 suites |
-| Thread Sanitizer | The same 38-test native suite passed with `-enableThreadSanitizer YES` |
+| Native behavior | `xcodebuild test` with the Swift 6.4 snapshot `SWIFT_EXEC` passed 39 tests in 9 suites |
+| Thread Sanitizer | The same 39-test native suite passed with `-enableThreadSanitizer YES` |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
 | Embedded downstream runtime | OpenCoreMedia constructed `CVPackedPixelBuffer` through the public constrained initializer, linked the OpenCoreVideo attachment witness, and completed its WASI Smoke executable |
+| Regular-WASM attachment runtime | `OpenCoreVideoRuntimeSmoke` completed attachment init, set, lookup, replacement, batch set, filtered dictionary materialization, single removal, and remove-all |
+| Embedded-WASM attachment runtime | The same executable completed with the Embedded SDK and explicit `libswiftUnicodeDataTables.a` linkage |
+
+Debug and release runtime Smokes pass on regular WASM and Embedded WASM. The
+pinned regular-WASI optimizer miscompiles allocation of the exact public
+attachment dictionary specialization. The library confines
+`@_optimize(none)` to its private dictionary-materialization helper, and the
+Smoke confines it to input-fixture construction; attachment search, mutation,
+and pixel paths remain optimized. This is separate from the fixed `_Cell` and
+`Dictionary.Iterator` traps inside the prior OpenCoreVideo implementation.
 
 The behavior suite verifies:
 
@@ -178,6 +192,7 @@ The behavior suite verifies:
 - exactly-once external release.
 - attachment set, lookup, and removal independent of pixel bytes.
 - attachment mode replacement, filtered snapshots, batch mutation, and removal;
+- concurrent distinct-key mutation without lost updates;
 - propagation of only `shouldPropagate` metadata without touching pixel bytes;
 - attachment replacement and propagation parity with Apple Core Video;
 - owned planar layout, metadata wrappers, stable address, and byte round-trip;

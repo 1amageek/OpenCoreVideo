@@ -145,6 +145,28 @@ the `CVBufferAttachmentStorage` witness from OpenCoreVideo. This is a metadata
 linkage requirement only; attachment values and pixel storage retain their
 existing owners and are not materialized or copied.
 
+The attachment owner stores an ordered array of key/value entries inside a
+nominal `State` protected by `CVStateLock`. Reads take a copy-on-write snapshot
+under the lock and search or materialize the public dictionary after releasing
+it. Mutations build a replacement array outside the lock, then commit it only
+when the captured generation still matches; a concurrent mutation causes a
+retry. Consequently, allocation, property-list construction, and public
+dictionary materialization do not execute while the mutex is held.
+
+This internal representation also avoids two Swift 6.4 snapshot regular-WASI
+runtime defects observed with the exact
+`swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a` baseline: storing
+`Dictionary<CVAttachmentKey, CVBufferAttachment>` directly in
+`Mutex` traps while initializing `_Cell`, and that dictionary's iterator traps
+while advancing. Batch input therefore uses index traversal, and public
+snapshots use `Dictionary(uniqueKeysWithValues:)`. These workarounds do not
+change the Apple-shaped dictionary API. The exact pinned optimizer also
+miscompiles allocation of this public dictionary specialization. Only the
+private metadata-materialization helper is compiled with
+`@_optimize(none)`; attachment search, mutation, and all pixel-data paths remain
+optimized. The runtime Smoke input constructor uses the same narrow boundary
+because that allocation otherwise traps before the library call begins.
+
 ### Pixel buffer pools
 
 ```text
@@ -297,7 +319,7 @@ handler executes while the mutex is held.
 
 | Logical state | Native | WASM | Embedded | Read / mutation entry points | Release |
 |---|---|---|---|---|---|
-| Buffer attachments | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | attachment operations snapshot or mutate under the same lock | attachment owner |
+| Buffer attachments | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | COW snapshot under lock; search/materialize outside; generation-checked replacement under lock | attachment owner |
 | External pixel or binary storage | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve access under lock; byte closure and release handler outside | storage lease, exactly once |
 | Pixel-buffer pool | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve and commit metadata under lock; allocation and callbacks outside | pool or checked-out storage |
 
