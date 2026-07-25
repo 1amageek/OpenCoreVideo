@@ -11,7 +11,13 @@ public final class CVBinaryAttachment:
 
     private let storage: CVExternalPixelBufferStorage<
         CVNoOpPixelBufferAccessCoordinator
-    >
+    >?
+
+    /// Creates an empty binary attachment without allocating storage.
+    public init() {
+        storage = nil
+        byteCount = 0
+    }
 
     public init(
         baseAddress: UnsafeMutableRawPointer,
@@ -31,6 +37,13 @@ public final class CVBinaryAttachment:
     public func withReadBytes(
         _ body: (borrowing Span<UInt8>) -> Void
     ) throws(CVPixelBufferError) {
+        guard let storage else {
+            var sentinel: UInt8 = 0
+            withUnsafePointer(to: &sentinel) { pointer in
+                body(Span(_unsafeStart: pointer, count: 0))
+            }
+            return
+        }
         try storage.withReadAccess(body)
     }
 

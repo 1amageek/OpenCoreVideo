@@ -129,6 +129,7 @@ Embedded.
 - [x] Broader Apple Core Video conformance fixtures
 - [x] Generic packed and planar platform storage integration contracts
 - [x] Zero-copy binary attachment storage
+- [x] Recursive array and dictionary attachment values
 - [x] Embedded downstream attachment-witness linkage
 
 ## Progress
@@ -160,7 +161,8 @@ Verified on 2026-07-25:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the Swift 6.4 snapshot `SWIFT_EXEC` passed 36 tests in 9 suites |
+| Native behavior | `xcodebuild test` with the Swift 6.4 snapshot `SWIFT_EXEC` passed 38 tests in 9 suites |
+| Thread Sanitizer | The same 38-test native suite passed with `-enableThreadSanitizer YES` |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |

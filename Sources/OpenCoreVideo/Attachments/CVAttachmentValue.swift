@@ -8,4 +8,6 @@ public enum CVAttachmentValue:
     case floatingPoint(Double)
     case string(String)
     case binary(CVBinaryAttachment)
+    case array([CVAttachmentValue])
+    case dictionary([String: CVAttachmentValue])
 }

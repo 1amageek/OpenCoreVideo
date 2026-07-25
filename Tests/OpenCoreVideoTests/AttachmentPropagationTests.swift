@@ -2,6 +2,27 @@ import Testing
 @testable import OpenCoreVideo
 
 struct AttachmentPropagationTests {
+    @Test("Recursive property-list attachment values preserve structure")
+    func recursivePropertyListValues() {
+        let value = CVAttachmentValue.dictionary([
+            "nested": .array([
+                .boolean(true),
+                .integer(7),
+                .string("camera"),
+            ])
+        ])
+
+        #expect(
+            value == .dictionary([
+                "nested": .array([
+                    .boolean(true),
+                    .integer(7),
+                    .string("camera"),
+                ])
+            ])
+        )
+    }
+
     @Test("Attachment replacement changes value and propagation mode")
     func replacement() throws {
         let buffer = try makeBuffer()

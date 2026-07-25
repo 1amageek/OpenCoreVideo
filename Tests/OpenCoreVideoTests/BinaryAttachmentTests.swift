@@ -4,6 +4,19 @@ import Testing
 
 @Suite("Binary attachments")
 struct BinaryAttachmentTests {
+    @Test("Empty binary attachment lends an empty span")
+    func emptyBinaryAttachment() throws {
+        let attachment = CVBinaryAttachment()
+        var observedCount = -1
+
+        try attachment.withReadBytes { bytes in
+            observedCount = bytes.count
+        }
+
+        #expect(attachment.byteCount == 0)
+        #expect(observedCount == 0)
+    }
+
     @Test("Binary bytes retain their original storage without copying")
     func zeroCopyBorrow() throws {
         let releaseCount = Mutex(0)

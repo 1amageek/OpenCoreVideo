@@ -187,6 +187,11 @@ entry and retain the same binary owner; they never materialize `[UInt8]` or
 duplicate the payload. Binary equality is storage identity equality, avoiding a
 hidden byte scan on the capture path.
 
+`CVAttachmentValue.array` and `.dictionary` preserve recursive Core Foundation
+property-list metadata at platform bridge boundaries. Containers own their
+small metadata structure; pixel payloads and binary attachment payloads remain
+separate owner-backed values.
+
 ### Planar compatibility surface
 
 The normal planar sequence deliberately follows Core Video:
@@ -287,6 +292,19 @@ Short synchronous access state is protected through `CVStateLock`, which uses
 `Synchronization.Mutex` on native Swift, WASM, and Embedded Swift. No `await`,
 allocator, timestamp provider, backend callback, byte-access closure, or release
 handler executes while the mutex is held.
+
+### Shared-state review matrix
+
+| Logical state | Native | WASM | Embedded | Read / mutation entry points | Release |
+|---|---|---|---|---|---|
+| Buffer attachments | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | attachment operations snapshot or mutate under the same lock | attachment owner |
+| External pixel or binary storage | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve access under lock; byte closure and release handler outside | storage lease, exactly once |
+| Pixel-buffer pool | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve and commit metadata under lock; allocation and callbacks outside | pool or checked-out storage |
+
+Recursive attachment containers are immutable values with Swift copy-on-write
+backing on every target. An empty `CVBinaryAttachment` has no external storage
+owner and lends only a zero-length scoped view; it does not introduce mutable
+shared state or a target-specific synchronization branch.
 
 Public concrete types used as generic arguments by Embedded downstream modules
 must preserve their conformance metadata in the defining module. A downstream
