@@ -199,9 +199,13 @@ descriptions behind `CVStateLock`, replaces registrations atomically by format
 identifier, and returns coherent snapshots. Known standard formats are checked
 against buffer layouts so their FourCC and memory layout cannot disagree.
 
-The current built-in inventory covers the active production formats: BGRA,
-RGBA, 8-bit grayscale, and 8-bit 4:2:0 bi-planar YCbCr in video and full range.
-The remaining Apple standard format descriptions are tracked in
+The current built-in inventory covers 44 byte-aligned formats: common packed
+RGB and grayscale layouts, integer and floating-point component layouts,
+depth/disparity scalars, 8/10/16-bit bi-planar YCbCr at 4:2:0, 4:2:2, and
+4:4:4, and alpha-bearing bi/tri-planar layouts. Odd-dimension subsampling and
+stored component widths are validated against the concrete plane layout.
+Indexed, fractional block-packed, Bayer/sensel, and compressed Apple formats
+require a separate block-layout or codec contract and remain tracked in
 `APPLE_API_TRACE.md`; custom formats can be validated and registered without
 placeholder descriptions.
 
@@ -419,9 +423,9 @@ boundary without discarding the underlying category used by tests and diagnostic
     allocation-threshold behavior.
 11. [Complete] Implement retained zero-copy binary attachment storage.
 12. [Complete] Implement image geometry and Apple differential behavior.
-13. [Complete] Implement the race-safe format registry and active production
-    format descriptions. Broader Apple standard-format inventory remains
-    explicitly tracked.
+13. [Complete] Implement the race-safe format registry and 44 byte-aligned
+    standard format descriptions. Block-packed, indexed, Bayer/sensel, and
+    compressed format families remain explicitly tracked.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.

@@ -137,7 +137,7 @@ Embedded.
 - [x] Clean-aperture, display-size, aspect-ratio, and origin geometry
 - [x] Image geometry Apple differential fixture
 - [x] Race-safe pixel-format description registry
-- [x] Active-format component, range, plane, and black-value descriptions
+- [x] Forty-four byte-aligned standard-format descriptions
 - [x] Known-format versus memory-layout validation
 
 ## Progress
@@ -164,7 +164,7 @@ Embedded.
 | Embedded cross-module generic construction | Complete |
 | Regular-WASM attachment runtime | Complete in debug and release configurations |
 | Image geometry | Complete for encoded size, clean rect, display size, pixel aspect, and origin |
-| Pixel-format registry | Complete; active production format inventory registered |
+| Pixel-format registry | Complete for 44 byte-aligned packed and planar formats; block-packed and compressed families remain explicit inventory work |
 
 ## Test evidence
 
@@ -228,7 +228,8 @@ The behavior suite verifies:
 - standard pixel-format components, ranges, planes, subsampling, and black values;
 - concurrent format registration without lost entries;
 - known-format memory-layout mismatch failures;
-- BGRA and NV12 description parity with Apple Core Video.
+- sixteen packed, floating-point, depth, YCbCr, and alpha-planar description
+  fixtures against Apple Core Video.
 
 ## Not implemented
 
@@ -240,6 +241,7 @@ native-handle, pool-allocation, and binary-attachment contracts are complete.
 Unsupported capabilities must continue to fail explicitly; no placeholder
 buffer or silent copy is provided.
 
-Standard-format descriptions beyond BGRA, RGBA, 8-bit grayscale, and 8-bit
-bi-planar 4:2:0 YCbCr remain inventory work; the registry never fabricates a
-description for an unregistered format.
+Indexed/sub-byte, fractional block-packed YCbCr, Bayer/sensel, and compressed
+pixel-format descriptions remain inventory work because the current
+byte-addressed packed layout cannot represent their storage contract. The
+registry never fabricates a description for an unregistered format.

@@ -24,6 +24,7 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
         public static let rgb = Self(rawValue: 1 << 2)
         public static let yCbCr = Self(rawValue: 1 << 3)
         public static let senselArray = Self(rawValue: 1 << 4)
+        public static let generic = Self(rawValue: 1 << 5)
     }
 
     public enum ComponentRange: Sendable, Hashable {

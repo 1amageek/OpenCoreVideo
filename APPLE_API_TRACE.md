@@ -24,8 +24,8 @@ Statuses mean:
 | `CVImageBuffer` | `CVImageBuffer.h` | Encoded size, clean rect, display size, pixel aspect, and origin over attachment-bearing buffers | Implemented | Portable behavior and Apple geometry differential tests |
 | `CVPixelBuffer` packed storage | `CVPixelBuffer.h` | Owned/external leases, layout validation, scoped read/write access | Implemented | Address identity, release, and failure tests |
 | `CVPixelBuffer` planar storage | `CVPixelBuffer.h` | Independent-plane and single-owner planar leases | Implemented | Plane identity, overlap, lifetime, and lock tests |
-| Pixel format descriptions | `CVPixelFormatDescription.h` | Race-safe registry plus complete descriptions for the active BGRA, RGBA, grayscale, and NV12 formats | Partial | Remaining Apple standard-format inventory and differential fixtures |
-| Pixel buffer pools | `CVPixelBufferPool.h` | Generic `CVPixelBufferPool`, allocator, pooled storage, threshold and flush operations | Partial | Allocation-threshold/reuse Apple differential and portable flush tests |
+| Pixel format descriptions | `CVPixelFormatDescription.h` | Race-safe registry plus 44 byte-aligned RGB, component, depth/disparity, and planar YCbCr descriptions | Partial | Indexed, fractional block-packed, Bayer/sensel, and compressed-format contracts |
+| Pixel buffer pools | `CVPixelBufferPool.h` | Generic `CVPixelBufferPool`, allocator, pooled storage, threshold and flush operations | Partial | Portable free-buffer notification and waiter-cancellation contract |
 | IOSurface-backed buffers | `CVPixelBufferIOSurface.h` | `CVPackedPlatformStorageLease` / `CVPlanarPlatformStorageLease` boundary | Adapter | Apple adapter conformance |
 | Metal buffers and textures | `CVMetalBuffer*.h`, `CVMetalTexture*.h` | Stable identity and scoped native-handle lease contract | Adapter | Cache lifetime and zero-copy projection tests |
 | Display timing | `CVDisplayLink.h`, `CVHostTime.h` | No declaration | Planned | Injected-clock and callback-order tests |

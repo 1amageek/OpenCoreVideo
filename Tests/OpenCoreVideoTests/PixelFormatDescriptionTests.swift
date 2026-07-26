@@ -5,6 +5,11 @@ import Testing
 struct PixelFormatDescriptionTests {
     @Test("Standard formats expose real component and plane layouts")
     func standardDescriptions() throws {
+        let registeredTypes =
+            CVPixelFormatDescriptionArrayCreateWithAllPixelFormatTypes()
+        #expect(registeredTypes.count == 44)
+        #expect(Set(registeredTypes).count == registeredTypes.count)
+
         let bgra = try #require(
             CVPixelFormatDescriptionCreateWithPixelFormatType(.bgra32)
         )
@@ -41,6 +46,39 @@ struct PixelFormatDescriptionTests {
                 )
         )
         #expect(planes[1].blackBlock == [128, 128])
+
+        let rgbaFloat = try #require(
+            CVPixelFormatDescriptionCreateWithPixelFormatType(.rgba128Float)
+        )
+        guard case .nonPlanar(let rgbaFloatLayout) =
+                rgbaFloat.planeConfiguration else {
+            Issue.record("RGBA float must be non-planar")
+            return
+        }
+        #expect(rgbaFloatLayout.bitsPerBlock == 128)
+        #expect(rgbaFloatLayout.bitsPerComponent == 32)
+        #expect(
+            rgbaFloatLayout.blackBlock
+                == [
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 0, 0,
+                    0, 0, 128, 63
+                ]
+        )
+
+        let alphaPlanar = try #require(
+            CVPixelFormatDescriptionCreateWithPixelFormatType(
+                .yCbCr444VideoRangeWithAlphaTriPlanar16
+            )
+        )
+        guard case .planar(let alphaPlanes) =
+                alphaPlanar.planeConfiguration else {
+            Issue.record("YCbCr alpha format must be planar")
+            return
+        }
+        #expect(alphaPlanes.count == 3)
+        #expect(alphaPlanes[2].blackBlock == [255, 255])
     }
 
     @Test("Registry replaces a description with the same format identifier")
@@ -149,6 +187,50 @@ struct PixelFormatDescriptionTests {
                 dimensions: dimensions,
                 pixelFormat: .yCbCr420BiPlanarVideoRange,
                 planes: [fullSizePlane, fullSizePlane]
+            )
+        }
+
+        let oneComponent10 = try CVPackedPixelBufferLayout(
+            dimensions: dimensions,
+            pixelFormat: .oneComponent10,
+            bytesPerPixel: 2,
+            bytesPerRow: 8
+        )
+        #expect(oneComponent10.byteCount == 32)
+
+        let oddDimensions = try CVPixelDimensions(width: 5, height: 3)
+        let luma10 = try CVPixelBufferPlaneLayout(
+            dimensions: oddDimensions,
+            bytesPerElement: 2,
+            bytesPerRow: 10
+        )
+        let chroma10 = try CVPixelBufferPlaneLayout(
+            dimensions: CVPixelDimensions(width: 3, height: 2),
+            bytesPerElement: 4,
+            bytesPerRow: 12
+        )
+        let p010 = try CVPlanarPixelBufferLayout(
+            dimensions: oddDimensions,
+            pixelFormat: .yCbCr420BiPlanar10VideoRange,
+            planes: [luma10, chroma10]
+        )
+        #expect(p010.byteCount == 54)
+
+        let invalidChroma10 = try CVPixelBufferPlaneLayout(
+            dimensions: CVPixelDimensions(width: 3, height: 2),
+            bytesPerElement: 2,
+            bytesPerRow: 6
+        )
+        #expect(
+            throws: CVPixelBufferError.pixelFormatPlaneLayoutMismatch(
+                format: .yCbCr420BiPlanar10VideoRange,
+                plane: 1
+            )
+        ) {
+            try CVPlanarPixelBufferLayout(
+                dimensions: oddDimensions,
+                pixelFormat: .yCbCr420BiPlanar10VideoRange,
+                planes: [luma10, invalidChroma10]
             )
         }
     }
