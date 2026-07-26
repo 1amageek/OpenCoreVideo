@@ -13,7 +13,9 @@ race-safe pixel-format description registry, bounded broadcast pool-availability
 notifications with explicit shutdown, and exactly-once external release.
 The registry includes 44 byte-aligned RGB, grayscale, floating-point, depth,
 disparity, and planar YCbCr formats with validated storage semantics. Concrete
-platform adapters remain in their platform packages.
+platform adapters remain in their platform packages. Apple-compatible
+`CVReturn` constants and an exhaustive typed-error mapping are available at ABI
+boundaries without replacing typed errors inside the package.
 
 ## Supported production targets
 

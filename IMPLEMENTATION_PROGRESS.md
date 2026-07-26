@@ -128,6 +128,7 @@ Embedded.
 - [x] Behavior Smoke tests
 - [x] Buffer pools, storage reuse, allocation thresholds, and flush behavior
 - [x] Broadcast pool availability notifications and explicit shutdown
+- [x] Apple-compatible `CVReturn` constants and exhaustive error mapping
 - [x] Broader Apple Core Video conformance fixtures
 - [x] Generic packed and planar platform storage integration contracts
 - [x] Zero-copy binary attachment storage
@@ -160,6 +161,7 @@ Embedded.
 | Packed pixel buffer pool | Complete |
 | Pool threshold and flush behavior | Complete |
 | Pool availability and shutdown behavior | Complete |
+| Result-code compatibility boundary | Complete |
 | Platform native-storage contract | Complete |
 | Zero-copy binary attachment | Complete |
 | Packed, planar, and pool Apple differential fixtures | Complete |
@@ -174,8 +176,8 @@ Verified on 2026-07-27:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 54 tests with no failures or skips |
-| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 54 tests, including registry, image-geometry, and pool-notification paths, with no failures, skips, or runtime warnings |
+| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 56 tests with no failures or skips |
+| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 56 tests, including registry, image-geometry, pool-notification, and result-code paths, with no failures, skips, or runtime warnings |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |

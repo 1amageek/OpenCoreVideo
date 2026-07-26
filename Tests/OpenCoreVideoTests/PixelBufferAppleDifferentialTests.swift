@@ -42,7 +42,7 @@ struct PixelBufferAppleDifferentialTests {
             []
         )
         guard
-            lockStatus == kCVReturnSuccess,
+            lockStatus == CoreVideo.kCVReturnSuccess,
             let appleAddress =
                 CoreVideo.CVPixelBufferGetBaseAddress(apple)
         else {
@@ -57,7 +57,7 @@ struct PixelBufferAppleDifferentialTests {
             apple,
             []
         )
-        guard unlockStatus == kCVReturnSuccess else {
+        guard unlockStatus == CoreVideo.kCVReturnSuccess else {
             throw ApplePixelBufferFixtureError.unlock(unlockStatus)
         }
 
@@ -158,7 +158,7 @@ struct PixelBufferAppleDifferentialTests {
                 auxiliaryAttributes,
                 &appleFirst
             )
-        #expect(firstStatus == kCVReturnSuccess)
+        #expect(firstStatus == CoreVideo.kCVReturnSuccess)
         #expect(appleFirst != nil)
 
         var appleBlocked: CoreVideo.CVPixelBuffer?
@@ -169,7 +169,10 @@ struct PixelBufferAppleDifferentialTests {
                 auxiliaryAttributes,
                 &appleBlocked
             )
-        #expect(blockedStatus == kCVReturnWouldExceedAllocationThreshold)
+        #expect(
+            blockedStatus
+                == CoreVideo.kCVReturnWouldExceedAllocationThreshold
+        )
         #expect(appleBlocked == nil)
 
         appleFirst = nil
@@ -181,7 +184,7 @@ struct PixelBufferAppleDifferentialTests {
                 auxiliaryAttributes,
                 &appleReused
             )
-        #expect(reusedStatus == kCVReturnSuccess)
+        #expect(reusedStatus == CoreVideo.kCVReturnSuccess)
         #expect(appleReused != nil)
 
         let portablePool = try CVPixelBufferPool(
@@ -233,7 +236,7 @@ struct PixelBufferAppleDifferentialTests {
             nil,
             &buffer
         )
-        guard status == kCVReturnSuccess, let buffer else {
+        guard status == CoreVideo.kCVReturnSuccess, let buffer else {
             throw ApplePixelBufferFixtureError.creation(status)
         }
         return buffer
@@ -253,7 +256,7 @@ struct PixelBufferAppleDifferentialTests {
             pixelBufferAttributes,
             &pool
         )
-        guard status == kCVReturnSuccess, let pool else {
+        guard status == CoreVideo.kCVReturnSuccess, let pool else {
             throw ApplePixelBufferFixtureError.poolCreation(status)
         }
         return pool

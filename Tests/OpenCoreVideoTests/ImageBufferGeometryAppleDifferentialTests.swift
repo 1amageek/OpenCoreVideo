@@ -17,7 +17,7 @@ struct ImageBufferGeometryAppleDifferentialTests {
             nil,
             &appleBuffer
         )
-        guard status == kCVReturnSuccess, let appleBuffer else {
+        guard status == CoreVideo.kCVReturnSuccess, let appleBuffer else {
             throw ImageBufferGeometryFixtureError.creation(status)
         }
         let portable = try makePortableBuffer()

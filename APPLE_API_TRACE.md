@@ -30,7 +30,7 @@ Statuses mean:
 | Metal buffers and textures | `CVMetalBuffer*.h`, `CVMetalTexture*.h` | Stable identity and scoped native-handle lease contract | Adapter | Cache lifetime and zero-copy projection tests |
 | Display timing | `CVDisplayLink.h`, `CVHostTime.h` | No declaration | Planned | Injected-clock and callback-order tests |
 | OpenGL families | `CVOpenGL*.h` | No declaration | Adapter | Separate legacy adapter decision |
-| Result codes | `CVReturn.h` | Typed `CVPixelBufferError` categories | Partial | Status translation at compatibility boundaries |
+| Result codes | `CVReturn.h` | Complete constant range plus exhaustive `CVPixelBufferError` translation at the ABI boundary | Implemented | Constant and category-mapping behavior tests |
 
 ## Current compatibility boundary
 

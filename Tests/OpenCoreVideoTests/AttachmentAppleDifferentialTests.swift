@@ -139,7 +139,7 @@ struct AttachmentAppleDifferentialTests {
             nil,
             &buffer
         )
-        guard status == kCVReturnSuccess, let buffer else {
+        guard status == CoreVideo.kCVReturnSuccess, let buffer else {
             throw AppleAttachmentFixtureError.pixelBufferCreation(status)
         }
         return buffer

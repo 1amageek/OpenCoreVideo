@@ -411,6 +411,9 @@ successful value.
 
 Apple-compatible status-code APIs translate internal typed failures at the API
 boundary without discarding the underlying category used by tests and diagnostics.
+`CVReturnForPixelBufferError` is the only shared status translation boundary;
+the implementation remains exhaustive over `CVPixelBufferError` so adding a
+new failure category requires an explicit ABI decision.
 
 ## Implementation sequence
 
@@ -438,6 +441,8 @@ boundary without discarding the underlying category used by tests and diagnostic
     compressed format families remain explicitly tracked.
 14. [Complete] Implement bounded broadcast free-buffer notifications,
     subscriber termination, idempotent shutdown, and post-shutdown failure.
+15. [Complete] Implement the complete `CVReturn` constant range and exhaustive
+    pixel-buffer error-to-status translation.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.
