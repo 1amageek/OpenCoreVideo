@@ -218,6 +218,7 @@ CVPixelBufferPoolAllocator
 CVPixelBufferPoolCore
     ├── checked-out storage ──► CVPooledPixelBufferStorage
     └── available storage ◄──── buffer release
+                                 └──► availability subscribers
 ```
 
 `CVPixelBufferPool` caches storage leases, not pixel-buffer objects. Each
@@ -234,6 +235,15 @@ regardless of minimum count or age. The timestamp callback, allocator, release,
 and byte-access callbacks never execute while the pool mutex is held.
 The owned allocator creates a fresh access coordinator for each newly allocated
 storage lease so backend lock state is never shared accidentally across buffers.
+
+Passing an allocation threshold enables portable free-buffer notifications.
+Each subscriber receives a bounded `AsyncStream` whose newest availability
+event replaces an unconsumed duplicate; a stalled subscriber therefore cannot
+grow memory without bound. Storage is committed to the available cache before
+continuations are copied under `CVStateLock`, and `yield` executes after both
+pool and subscriber locks are released. `shutdown()` rejects new checkouts,
+releases cached storage, and finishes every subscriber. It is idempotent and is
+also invoked when the pool is destroyed.
 
 The pure-Swift configuration replaces Apple's Core Foundation dictionaries,
 allocator argument, out parameter, and status code with typed values, a returned
@@ -363,7 +373,7 @@ handler executes while the mutex is held.
 |---|---|---|---|---|---|
 | Buffer attachments | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | COW snapshot under lock; search/materialize outside; generation-checked replacement under lock | attachment owner |
 | External pixel or binary storage | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve access under lock; byte closure and release handler outside | storage lease, exactly once |
-| Pixel-buffer pool | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve and commit metadata under lock; allocation and callbacks outside | pool or checked-out storage |
+| Pixel-buffer pool | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve and commit metadata under lock; allocation, stream yield/finish, and callbacks outside | pool, checked-out storage, or explicit shutdown |
 | Pixel-format registry | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | snapshot or atomic replacement under lock; description construction outside | registry |
 
 Recursive attachment containers are immutable values with Swift copy-on-write
@@ -426,6 +436,8 @@ boundary without discarding the underlying category used by tests and diagnostic
 13. [Complete] Implement the race-safe format registry and 44 byte-aligned
     standard format descriptions. Block-packed, indexed, Bayer/sensel, and
     compressed format families remain explicitly tracked.
+14. [Complete] Implement bounded broadcast free-buffer notifications,
+    subscriber termination, idempotent shutdown, and post-shutdown failure.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.

@@ -127,6 +127,7 @@ Embedded.
 - [x] Single shared-owner lifetime verification
 - [x] Behavior Smoke tests
 - [x] Buffer pools, storage reuse, allocation thresholds, and flush behavior
+- [x] Broadcast pool availability notifications and explicit shutdown
 - [x] Broader Apple Core Video conformance fixtures
 - [x] Generic packed and planar platform storage integration contracts
 - [x] Zero-copy binary attachment storage
@@ -158,6 +159,7 @@ Embedded.
 | Shared planar lease Smoke | Complete |
 | Packed pixel buffer pool | Complete |
 | Pool threshold and flush behavior | Complete |
+| Pool availability and shutdown behavior | Complete |
 | Platform native-storage contract | Complete |
 | Zero-copy binary attachment | Complete |
 | Packed, planar, and pool Apple differential fixtures | Complete |
@@ -172,8 +174,8 @@ Verified on 2026-07-27:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 50 tests with no failures or skips |
-| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 50 tests, including the registry and image-geometry paths, with no failures, skips, or runtime warnings |
+| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 54 tests with no failures or skips |
+| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 54 tests, including registry, image-geometry, and pool-notification paths, with no failures, skips, or runtime warnings |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
@@ -218,6 +220,8 @@ The behavior suite verifies:
 - allocation threshold parity with Apple, including reuse at the threshold;
 - allocation reservation rollback and undersized-storage rejection;
 - age flush honoring minimum count and excess flush overriding it;
+- bounded multi-subscriber pool availability, cancellation, shutdown, and
+  outstanding-storage release without a post-shutdown timestamp callback;
 - packed and planar platform storage identities and scoped native handles;
 - zero-copy binary attachment address identity, propagation, and exactly-once
   release;
@@ -235,9 +239,10 @@ The behavior suite verifies:
 
 Concrete aggregate Core Foundation adapters, format conversion, browser video
 frames, DMA-BUF/NvBufSurface implementations, V4L2 mappings, CUDA
-interoperability, Apple free-buffer notifications, and Apple status-code
-wrappers remain integration- or ABI-layer work. Their common packed, planar,
-native-handle, pool-allocation, and binary-attachment contracts are complete.
+interoperability, the Apple NotificationCenter bridge for portable pool
+availability events, and Apple status-code wrappers remain integration- or
+ABI-layer work. Their common packed, planar, native-handle, pool-allocation,
+notification, and binary-attachment contracts are complete.
 Unsupported capabilities must continue to fail explicitly; no placeholder
 buffer or silent copy is provided.
 

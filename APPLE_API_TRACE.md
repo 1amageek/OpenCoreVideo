@@ -25,7 +25,7 @@ Statuses mean:
 | `CVPixelBuffer` packed storage | `CVPixelBuffer.h` | Owned/external leases, layout validation, scoped read/write access | Implemented | Address identity, release, and failure tests |
 | `CVPixelBuffer` planar storage | `CVPixelBuffer.h` | Independent-plane and single-owner planar leases | Implemented | Plane identity, overlap, lifetime, and lock tests |
 | Pixel format descriptions | `CVPixelFormatDescription.h` | Race-safe registry plus 44 byte-aligned RGB, component, depth/disparity, and planar YCbCr descriptions | Partial | Indexed, fractional block-packed, Bayer/sensel, and compressed-format contracts |
-| Pixel buffer pools | `CVPixelBufferPool.h` | Generic `CVPixelBufferPool`, allocator, pooled storage, threshold and flush operations | Partial | Portable free-buffer notification and waiter-cancellation contract |
+| Pixel buffer pools | `CVPixelBufferPool.h` | Generic pool, allocation/reuse/flush, bounded broadcast availability streams, subscriber termination, and shutdown | Implemented | Portable behavior and Apple threshold differential tests |
 | IOSurface-backed buffers | `CVPixelBufferIOSurface.h` | `CVPackedPlatformStorageLease` / `CVPlanarPlatformStorageLease` boundary | Adapter | Apple adapter conformance |
 | Metal buffers and textures | `CVMetalBuffer*.h`, `CVMetalTexture*.h` | Stable identity and scoped native-handle lease contract | Adapter | Cache lifetime and zero-copy projection tests |
 | Display timing | `CVDisplayLink.h`, `CVHostTime.h` | No declaration | Planned | Injected-clock and callback-order tests |
@@ -45,5 +45,7 @@ bytes through `Span`; propagation retains that same owner.
 
 The portable pool replaces Core Foundation attribute dictionaries, allocator
 arguments, out parameters, and `CVReturn` with typed configuration, generic
-allocators, returned buffers, and `CVPixelBufferError`. Apple free-buffer
-notifications and status-code translation belong to an ABI adapter.
+allocators, returned buffers, and `CVPixelBufferError`.
+The portable availability stream preserves the free-buffer notification
+semantics without Foundation; an Apple NotificationCenter bridge and
+status-code translation belong to an ABI adapter.

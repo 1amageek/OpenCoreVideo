@@ -51,6 +51,20 @@ public final class CVPixelBufferPool<
     ) {
         core.flush(flags)
     }
+
+    public func availabilityNotifications()
+        -> AsyncStream<CVPixelBufferPoolAvailability>
+    {
+        core.availabilityNotifications()
+    }
+
+    public func shutdown() {
+        core.shutdown()
+    }
+
+    deinit {
+        core.shutdown()
+    }
 }
 
 extension CVPixelBufferPool

@@ -43,6 +43,7 @@ public enum CVPixelBufferError: Error, Sendable, Equatable {
     case invalidMinimumBufferCount(Int)
     case invalidAllocationThreshold(Int)
     case wouldExceedAllocationThreshold(Int)
+    case poolShutdown
     case unsupportedAccess(CVPixelBufferAccessMode)
     case accessConflict(CVPixelBufferAccessMode)
     case platformAccessFailure(code: Int32)

@@ -9,7 +9,8 @@ owned and external memory, single-owner multi-plane and native-handle storage
 contracts, scoped zero-copy access, typed and binary attachments, recyclable
 storage with allocation thresholds, balanced access coordination, plane range
 and overlap validation, image geometry derived from typed attachments, a
-race-safe pixel-format description registry, and exactly-once external release.
+race-safe pixel-format description registry, bounded broadcast pool-availability
+notifications with explicit shutdown, and exactly-once external release.
 The registry includes 44 byte-aligned RGB, grayscale, floating-point, depth,
 disparity, and planar YCbCr formats with validated storage semantics. Concrete
 platform adapters remain in their platform packages.

@@ -194,6 +194,106 @@ struct PixelBufferPoolTests {
         #expect(releaseCount.value == 1)
     }
 
+    @Test("Threshold use enables broadcast availability notifications")
+    func availabilityNotifications() async throws {
+        let pool = CVPixelBufferPool(
+            layout: try makeLayout(),
+            allocator: PoolAllocator(probe: PoolAllocatorProbe())
+        )
+        let firstStream = pool.availabilityNotifications()
+        let secondStream = pool.availabilityNotifications()
+        let firstEvent = Task {
+            var iterator = firstStream.makeAsyncIterator()
+            return await iterator.next()
+        }
+        let secondEvent = Task {
+            var iterator = secondStream.makeAsyncIterator()
+            return await iterator.next()
+        }
+
+        var checkedOut = try Optional(
+            pool.makePixelBuffer(allocationThreshold: 1)
+        )
+        #expect(checkedOut != nil)
+        #expect(
+            throws: CVPixelBufferError
+                .wouldExceedAllocationThreshold(1)
+        ) {
+            _ = try pool.makePixelBuffer(allocationThreshold: 1)
+        }
+        checkedOut = nil
+
+        #expect(await firstEvent.value == .bufferAvailable)
+        #expect(await secondEvent.value == .bufferAvailable)
+        pool.shutdown()
+    }
+
+    @Test("Shutdown finishes notifications and rejects new checkout")
+    func shutdown() async throws {
+        let pool = CVPixelBufferPool(
+            layout: try makeLayout(),
+            allocator: PoolAllocator(probe: PoolAllocatorProbe())
+        )
+        let stream = pool.availabilityNotifications()
+        let event = Task {
+            var iterator = stream.makeAsyncIterator()
+            return await iterator.next()
+        }
+
+        do {
+            _ = try pool.makePixelBuffer()
+        }
+        pool.shutdown()
+
+        #expect(await event.value == nil)
+        #expect(throws: CVPixelBufferError.poolShutdown) {
+            _ = try pool.makePixelBuffer()
+        }
+        pool.shutdown()
+    }
+
+    @Test("Cancelled availability subscription terminates cleanly")
+    func cancelledAvailabilitySubscription() async throws {
+        let pool = CVPixelBufferPool(
+            layout: try makeLayout(),
+            allocator: PoolAllocator(probe: PoolAllocatorProbe())
+        )
+        let stream = pool.availabilityNotifications()
+        let event = Task {
+            var iterator = stream.makeAsyncIterator()
+            return await iterator.next()
+        }
+
+        event.cancel()
+        #expect(await event.value == nil)
+
+        do {
+            _ = try pool.makePixelBuffer(allocationThreshold: 1)
+        }
+        pool.shutdown()
+    }
+
+    @Test("Outstanding storage release after shutdown skips timestamp callback")
+    func releaseAfterShutdown() throws {
+        let timestampCount = Mutex(0)
+        let pool = CVPixelBufferPool(
+            layout: try makeLayout(),
+            allocator: PoolAllocator(probe: PoolAllocatorProbe())
+        ) {
+            timestampCount.withLock { count in
+                count += 1
+                return UInt64(count)
+            }
+        }
+        var checkedOut = try Optional(pool.makePixelBuffer())
+        #expect(checkedOut != nil)
+
+        pool.shutdown()
+        checkedOut = nil
+
+        #expect(timestampCount.withLock { $0 } == 0)
+    }
+
     private func makeLayout() throws -> CVPackedPixelBufferLayout {
         try CVPackedPixelBufferLayout(
             dimensions: CVPixelDimensions(width: 2, height: 1),
