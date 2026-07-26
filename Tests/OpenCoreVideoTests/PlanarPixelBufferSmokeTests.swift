@@ -304,7 +304,7 @@ struct PlanarPixelBufferSmokeTests {
         )
         return try CVPlanarPixelBufferLayout(
             dimensions: dimensions,
-            pixelFormat: .grayscale8,
+            pixelFormat: CVPixelFormatType(rawValue: 0x5030_3031),
             planes: [plane]
         )
     }
@@ -320,7 +320,7 @@ struct PlanarPixelBufferSmokeTests {
         )
         return try CVPlanarPixelBufferLayout(
             dimensions: dimensions,
-            pixelFormat: .yCbCr420BiPlanarFullRange,
+            pixelFormat: CVPixelFormatType(rawValue: 0x5030_3032),
             planes: [plane, plane]
         )
     }

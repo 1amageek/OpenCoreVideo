@@ -36,6 +36,47 @@ public struct CVPlanarPixelBufferLayout: Sendable, Hashable {
             byteCount = total.partialValue
         }
 
+        if let description = CVPixelFormatDescription.standardDescription(
+            for: pixelFormat
+        ) {
+            guard case .planar(let pixelLayouts) =
+                    description.planeConfiguration else {
+                throw .pixelFormatRequiresPackedLayout(pixelFormat)
+            }
+            guard pixelLayouts.count == planes.count else {
+                throw .planeCountMismatch(
+                    expected: pixelLayouts.count,
+                    actual: planes.count
+                )
+            }
+            for index in planes.indices {
+                let pixelLayout = pixelLayouts[index]
+                let expectedWidth = try Self.roundedUpQuotient(
+                    dimensions.width,
+                    pixelLayout.subsampling.horizontal
+                )
+                let expectedHeight = try Self.roundedUpQuotient(
+                    dimensions.height,
+                    pixelLayout.subsampling.vertical
+                )
+                let bitsPerByte = 8
+                guard pixelLayout.blockSize
+                        == CVImageSize(width: 1, height: 1),
+                      pixelLayout.bitsPerBlock.isMultiple(
+                        of: bitsPerByte
+                      ),
+                      planes[index].dimensions.width == expectedWidth,
+                      planes[index].dimensions.height == expectedHeight,
+                      planes[index].bytesPerElement
+                        == pixelLayout.bitsPerBlock / bitsPerByte else {
+                    throw .pixelFormatPlaneLayoutMismatch(
+                        format: pixelFormat,
+                        plane: index
+                    )
+                }
+            }
+        }
+
         let quotient = byteCount / dimensions.height
         let remainder = byteCount % dimensions.height
         let coveringBytesPerRow = quotient + (remainder == 0 ? 0 : 1)
@@ -45,5 +86,16 @@ public struct CVPlanarPixelBufferLayout: Sendable, Hashable {
         self.planes = planes
         self.byteCount = byteCount
         self.coveringBytesPerRow = coveringBytesPerRow
+    }
+
+    private static func roundedUpQuotient(
+        _ value: Int,
+        _ divisor: Int
+    ) throws(CVPixelBufferError) -> Int {
+        let adjusted = value.addingReportingOverflow(divisor - 1)
+        guard !adjusted.overflow else {
+            throw .layoutOverflow
+        }
+        return adjusted.partialValue / divisor
     }
 }

@@ -134,6 +134,11 @@ Embedded.
 - [x] Embedded downstream attachment-witness linkage
 - [x] Regular-WASM attachment state runtime verification
 - [x] Concurrent attachment update verification
+- [x] Clean-aperture, display-size, aspect-ratio, and origin geometry
+- [x] Image geometry Apple differential fixture
+- [x] Race-safe pixel-format description registry
+- [x] Active-format component, range, plane, and black-value descriptions
+- [x] Known-format versus memory-layout validation
 
 ## Progress
 
@@ -158,15 +163,17 @@ Embedded.
 | Packed, planar, and pool Apple differential fixtures | Complete |
 | Embedded cross-module generic construction | Complete |
 | Regular-WASM attachment runtime | Complete in debug and release configurations |
+| Image geometry | Complete for encoded size, clean rect, display size, pixel aspect, and origin |
+| Pixel-format registry | Complete; active production format inventory registered |
 
 ## Test evidence
 
-Verified on 2026-07-25:
+Verified on 2026-07-27:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the Swift 6.4 snapshot `SWIFT_EXEC` passed 39 tests in 9 suites |
-| Thread Sanitizer | The same 39-test native suite passed with `-enableThreadSanitizer YES` |
+| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 50 tests with no failures or skips |
+| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 50 tests, including the registry and image-geometry paths, with no failures, skips, or runtime warnings |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
@@ -216,6 +223,12 @@ The behavior suite verifies:
   release;
 - packed dimensions, format, stride, and scoped mutation parity with Apple;
 - bi-planar plane count, dimensions, and row-stride parity with Apple.
+- clean aperture, pixel aspect ratio, display size, and origin parity with Apple;
+- malformed geometry attachment failures;
+- standard pixel-format components, ranges, planes, subsampling, and black values;
+- concurrent format registration without lost entries;
+- known-format memory-layout mismatch failures;
+- BGRA and NV12 description parity with Apple Core Video.
 
 ## Not implemented
 
@@ -226,3 +239,7 @@ wrappers remain integration- or ABI-layer work. Their common packed, planar,
 native-handle, pool-allocation, and binary-attachment contracts are complete.
 Unsupported capabilities must continue to fail explicitly; no placeholder
 buffer or silent copy is provided.
+
+Standard-format descriptions beyond BGRA, RGBA, 8-bit grayscale, and 8-bit
+bi-planar 4:2:0 YCbCr remain inventory work; the registry never fabricates a
+description for an unregistered format.

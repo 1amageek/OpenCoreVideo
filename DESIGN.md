@@ -7,8 +7,10 @@ the **packed, independent-plane, and shared planar lease Smoke stages**.
 Validated layouts, owned and external storage, scoped zero-copy CPU access,
 typed and binary attachments, range and overlap validation, exactly-once
 external release, recyclable packed-buffer pools, and Apple runtime
-conformance fixtures are implemented. Platform-native concrete adapters remain
-in their integration packages.
+conformance fixtures are implemented. Clean-aperture, display-size, pixel-aspect,
+and origin geometry plus the Swift 6.4 pixel-format description registry are
+also implemented. Platform-native concrete adapters remain in their integration
+packages.
 
 ## Apple API review
 
@@ -47,6 +49,11 @@ The pool API surface was rechecked on 2026-07-25 against
 threshold prevents only new allocations and does not prevent an already
 allocated buffer from being recycled.
 `CVPixelBufferPoolFlushFlags.RawValue` follows `CVOptionFlags` as `UInt64`.
+
+The Swift 6.4 image-geometry and pixel-format description surfaces were
+rechecked on 2026-07-27 against the MacOSX 27.0 symbol graph,
+`CVImageBuffer.h`, `CVPixelBuffer.h`, `CVPixelFormatDescription.h`, and Apple
+runtime differential fixtures.
 
 ## Responsibility
 
@@ -166,6 +173,37 @@ private metadata-materialization helper is compiled with
 `@_optimize(none)`; attachment search, mutation, and all pixel-data paths remain
 optimized. The runtime Smoke input constructor uses the same narrow boundary
 because that allocation otherwise traps before the library call begins.
+
+### Image geometry
+
+`CVImageBufferGetEncodedSize`, `CVImageBufferGetCleanRect`,
+`CVImageBufferGetDisplaySize`, and `CVImageBufferIsFlipped` derive their values
+from immutable dimensions, origin position, and typed attachments. Clean
+aperture is centered in encoded coordinates before applying horizontal and
+vertical offsets. Pixel aspect ratio adjusts the clean width, and explicit
+display dimensions take precedence.
+
+The shared target cannot expose CoreGraphics `CGSize` or `CGRect` without
+violating its standard-library-only contract. `CVImageSize`,
+`CVImageFloatSize`, and `CVImageRect` are the portable returned values. Unlike
+Apple's nonthrowing C getters, attachment-dependent getters throw
+`CVPixelBufferError` for malformed or impossible metadata instead of silently
+returning invented geometry.
+
+### Pixel-format descriptions
+
+`CVPixelFormatDescription` models components, component range, compatibility,
+packed or planar configuration, block size, bit depth, subsampling, and black
+values without Foundation or CoreGraphics. `Registry` stores immutable
+descriptions behind `CVStateLock`, replaces registrations atomically by format
+identifier, and returns coherent snapshots. Known standard formats are checked
+against buffer layouts so their FourCC and memory layout cannot disagree.
+
+The current built-in inventory covers the active production formats: BGRA,
+RGBA, 8-bit grayscale, and 8-bit 4:2:0 bi-planar YCbCr in video and full range.
+The remaining Apple standard format descriptions are tracked in
+`APPLE_API_TRACE.md`; custom formats can be validated and registered without
+placeholder descriptions.
 
 ### Pixel buffer pools
 
@@ -322,6 +360,7 @@ handler executes while the mutex is held.
 | Buffer attachments | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | COW snapshot under lock; search/materialize outside; generation-checked replacement under lock | attachment owner |
 | External pixel or binary storage | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve access under lock; byte closure and release handler outside | storage lease, exactly once |
 | Pixel-buffer pool | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve and commit metadata under lock; allocation and callbacks outside | pool or checked-out storage |
+| Pixel-format registry | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | snapshot or atomic replacement under lock; description construction outside | registry |
 
 Recursive attachment containers are immutable values with Swift copy-on-write
 backing on every target. An empty `CVBinaryAttachment` has no external storage
@@ -379,6 +418,10 @@ boundary without discarding the underlying category used by tests and diagnostic
     attachments, packed metadata and access, planar metadata, and pool
     allocation-threshold behavior.
 11. [Complete] Implement retained zero-copy binary attachment storage.
+12. [Complete] Implement image geometry and Apple differential behavior.
+13. [Complete] Implement the race-safe format registry and active production
+    format descriptions. Broader Apple standard-format inventory remains
+    explicitly tracked.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.

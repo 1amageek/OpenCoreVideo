@@ -8,8 +8,9 @@ milestones are implemented. They include validated pixel and plane layouts,
 owned and external memory, single-owner multi-plane and native-handle storage
 contracts, scoped zero-copy access, typed and binary attachments, recyclable
 storage with allocation thresholds, balanced access coordination, plane range
-and overlap validation, and exactly-once external release. Concrete platform
-adapters remain in their platform packages.
+and overlap validation, image geometry derived from typed attachments, a
+race-safe pixel-format description registry, and exactly-once external release.
+Concrete platform adapters remain in their platform packages.
 
 ## Supported production targets
 
@@ -30,12 +31,16 @@ partial, adapter-owned, and planned Apple Core Video families.
 ## Build
 
 ```bash
-swift build
-swift build --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm
-swift build --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded
-swift run --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm \
+TOOLCHAINS=org.swift.64202607171a xcrun swift build
+TOOLCHAINS=org.swift.64202607171a xcrun swift build \
+  --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm
+TOOLCHAINS=org.swift.64202607171a xcrun swift build \
+  --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded \
+  --target OpenCoreVideo
+TOOLCHAINS=org.swift.64202607171a xcrun swift run \
+  --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm \
   OpenCoreVideoRuntimeSmoke
-swift run \
+TOOLCHAINS=org.swift.64202607171a xcrun swift run \
   --swift-sdk swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded \
   -Xlinker /absolute/path/to/libswiftUnicodeDataTables.a \
   OpenCoreVideoRuntimeSmoke

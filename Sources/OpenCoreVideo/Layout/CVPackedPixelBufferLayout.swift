@@ -17,6 +17,31 @@ public struct CVPackedPixelBufferLayout: Sendable, Hashable {
         guard bytesPerPixel > 0 else {
             throw .invalidBytesPerPixel(bytesPerPixel)
         }
+        if let description = CVPixelFormatDescription.standardDescription(
+            for: pixelFormat
+        ) {
+            guard case .nonPlanar(let pixelLayout) =
+                    description.planeConfiguration else {
+                throw .pixelFormatRequiresPlanarLayout(pixelFormat)
+            }
+            let bitsPerByte = 8
+            guard pixelLayout.blockSize == CVImageSize(width: 1, height: 1),
+                  pixelLayout.bitsPerBlock.isMultiple(of: bitsPerByte) else {
+                throw .pixelFormatPlaneLayoutMismatch(
+                    format: pixelFormat,
+                    plane: 0
+                )
+            }
+            let expectedBytesPerPixel =
+                pixelLayout.bitsPerBlock / bitsPerByte
+            guard bytesPerPixel == expectedBytesPerPixel else {
+                throw .pixelFormatBytesPerPixelMismatch(
+                    format: pixelFormat,
+                    expected: expectedBytesPerPixel,
+                    actual: bytesPerPixel
+                )
+            }
+        }
 
         let minimumRowResult = dimensions.width.multipliedReportingOverflow(
             by: bytesPerPixel
