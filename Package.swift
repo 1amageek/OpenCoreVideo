@@ -19,7 +19,8 @@ let package = Package(
         ),
         .executableTarget(
             name: "OpenCoreVideoRuntimeSmoke",
-            dependencies: ["OpenCoreVideo"]
+            dependencies: ["OpenCoreVideo"],
+            path: "Tests/Runtime/OpenCoreVideoRuntimeSmoke"
         ),
         .testTarget(
             name: "OpenCoreVideoTests",
