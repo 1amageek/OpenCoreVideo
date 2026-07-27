@@ -73,7 +73,7 @@ Foundation's descriptor-block ABI.
 |---|---:|---|
 | Owned storage write then read | 0 | Both scopes borrow the owned allocation |
 | External storage write then read | 0 | Both scopes expose the original base address |
-| Pixel buffer to Core Media | 0 | Core Media retains the buffer (`any CVPixelBuffer` outside Embedded; a generic buffer in Embedded) and borrows `Span` |
+| Pixel buffer to Core Media | 0 | Core Media retains the `CVPixelBuffer` owner and borrows `Span` |
 | Owned planar plane access | 0 | Each scope borrows its plane allocation |
 | External planar plane access | 0 | Each scope exposes the original caller-provided plane address |
 | Shared planar lease access | 0 | Every plane scope borrows from one retained platform owner |
@@ -103,6 +103,7 @@ Embedded.
 - [x] Pixel dimensions with positive-value validation
 - [x] Four-character pixel format value
 - [x] Packed layout with overflow and row-stride validation
+- [x] Block-packed and sub-byte layout with checked block alignment
 - [x] Typed buffer, access, and platform-storage errors
 - [x] Storage extension protocol
 - [x] Owned in-memory storage
@@ -130,7 +131,7 @@ Embedded.
 - [x] Broadcast pool availability notifications and explicit shutdown
 - [x] Apple-compatible `CVReturn` constants and exhaustive error mapping
 - [x] Broader Apple Core Video conformance fixtures
-- [x] Generic packed and planar platform storage integration contracts
+- [x] Packed and planar platform storage integration contracts
 - [x] Zero-copy binary attachment storage
 - [x] Recursive array and dictionary attachment values
 - [x] Embedded downstream attachment-witness linkage
@@ -139,7 +140,8 @@ Embedded.
 - [x] Clean-aperture, display-size, aspect-ratio, and origin geometry
 - [x] Image geometry Apple differential fixture
 - [x] Race-safe pixel-format description registry
-- [x] Forty-four byte-aligned standard-format descriptions
+- [x] Seventy-four standard-format descriptions including block-packed YCbCr,
+      Bayer, and sensel layouts
 - [x] Known-format versus memory-layout validation
 - [x] Non-deprecated Core Video host-time operations
 - [x] Race-safe, freeze-on-first-use host-clock provider
@@ -168,10 +170,10 @@ Embedded.
 | Platform native-storage contract | Complete |
 | Zero-copy binary attachment | Complete |
 | Packed, planar, and pool Apple differential fixtures | Complete |
-| Embedded cross-module generic construction | Complete |
+| Embedded cross-module packed-buffer construction | Complete |
 | Regular-WASM attachment runtime | Complete in debug and release configurations |
 | Image geometry | Complete for encoded size, clean rect, display size, pixel aspect, and origin |
-| Pixel-format registry | Complete for 44 byte-aligned packed and planar formats; block-packed and compressed families remain explicit inventory work |
+| Pixel-format registry | Complete for 74 packed, planar, block-packed YCbCr, Bayer, and sensel formats; palette-dependent indexed and compressed capability families remain explicit inventory work |
 | Host time | Complete for the three active `CVHostTime.h` operations; deprecated `CVDisplayLink` is intentionally omitted |
 
 ## Test evidence
@@ -180,14 +182,14 @@ Verified on 2026-07-27:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 61 tests with no failures or skips |
-| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 61 tests, including concurrent host-clock access, registry, image-geometry, pool-notification, and result-code paths, with no failures, skips, or runtime warnings |
+| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 67 tests with no failures, skips, or runtime warnings |
+| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 67 tests with no failures, skips, or runtime warnings |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
-| Embedded downstream runtime | OpenCoreMedia constructed `CVPackedPixelBuffer` through the public constrained initializer, linked the OpenCoreVideo attachment witness, and completed its WASI Smoke executable |
-| Regular-WASM runtime | `OpenCoreVideoRuntimeSmoke` completed host-time reads plus attachment init, set, lookup, replacement, batch set, filtered dictionary materialization, single removal, and remove-all |
-| Embedded-WASM runtime | The same executable installed an Embedded clock provider and completed with explicit `libswiftUnicodeDataTables.a` linkage |
+| Embedded downstream runtime | OpenCoreMedia compiled and passed 80 native behavior tests against the fixed-layout `CVPackedPixelBuffer` API using a temporary workspace dependency; its manifest was restored to the remote URL afterward |
+| Regular-WASM runtime | `OpenCoreVideoRuntimeSmoke` completed host-time reads, owned/custom-coordinated storage, external exactly-once release, protocol-injected custom packed storage, block-packed allocation/write/read, and attachment operations |
+| Embedded-WASM runtime | The same storage and block-packed executable completed after installing an Embedded clock provider with explicit `libswiftUnicodeDataTables.a` linkage |
 
 Debug and release runtime Smokes pass on regular WASM and Embedded WASM. The
 pinned regular-WASI optimizer miscompiles allocation of the exact public
@@ -238,8 +240,11 @@ The behavior suite verifies:
 - standard pixel-format components, ranges, planes, subsampling, and black values;
 - concurrent format registration without lost entries;
 - known-format memory-layout mismatch failures;
-- sixteen packed, floating-point, depth, YCbCr, and alpha-planar description
-  fixtures against Apple Core Video.
+- forty-six packed, floating-point, depth, YCbCr, alpha-planar, block-packed,
+  Bayer, and sensel description fixtures against Apple Core Video;
+- v210, packed Bayer, sub-byte, and two-dimensional aligned block arithmetic;
+- typed block-size, byte-count, alignment, row-capacity, and overflow failures;
+- zero-copy block-packed owned storage across its complete byte region;
 - monotonic host-time reads and declared frequency/minimum-delta behavior;
 - typed unconfigured-provider failure and freeze-on-first-use lifecycle;
 - concurrent clock installation/read races preserving one active timebase;
@@ -256,10 +261,11 @@ notification, and binary-attachment contracts are complete.
 Unsupported capabilities must continue to fail explicitly; no placeholder
 buffer or silent copy is provided.
 
-Indexed/sub-byte, fractional block-packed YCbCr, Bayer/sensel, and compressed
-pixel-format descriptions remain inventory work because the current
-byte-addressed packed layout cannot represent their storage contract. The
-registry never fabricates a description for an unregistered format.
+Palette-dependent indexed descriptions and compressed pixel formats remain
+inventory work. Sub-byte custom layouts, fractional block-packed YCbCr,
+Bayer, and sensel storage are represented by the block-layout contract. The
+registry never fabricates a description or codec capability for an unsupported
+format.
 
 `CVDisplayLink` is not future inventory: the installed SDK deprecates the entire
 family as of macOS 15, and this package intentionally excludes deprecated APIs.

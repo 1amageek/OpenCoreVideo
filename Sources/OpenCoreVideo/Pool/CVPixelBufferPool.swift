@@ -28,10 +28,7 @@ public final class CVPixelBufferPool<
 
     public func makePixelBuffer(
         allocationThreshold: Int? = nil
-    ) throws(CVPixelBufferError) -> CVPackedPixelBuffer<
-        CVPooledPixelBufferStorage<Allocator>,
-        CVBufferAttachments
-    > {
+    ) throws(CVPixelBufferError) -> CVPackedPixelBuffer {
         let storage = try core.checkout(
             byteCount: layout.byteCount,
             allocationThreshold: allocationThreshold

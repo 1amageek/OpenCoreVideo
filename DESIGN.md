@@ -57,7 +57,10 @@ allocated buffer from being recycled.
 The Swift 6.4 image-geometry and pixel-format description surfaces were
 rechecked on 2026-07-27 against the MacOSX 27.0 symbol graph,
 `CVImageBuffer.h`, `CVPixelBuffer.h`, `CVPixelFormatDescription.h`, and Apple
-runtime differential fixtures.
+runtime differential fixtures. The block-packed slice also reviewed
+`CVPixelFormatTypeCopyFourCharCodeString`, block size, block alignment,
+component subsampling, and black-block dictionaries from the installed SDK and
+Apple runtime.
 
 The three active `CVHostTime.h` operations were reviewed with `remark` on
 2026-07-27. `CVDisplayLink.h` was also checked in the installed SDK; the entire
@@ -142,7 +145,7 @@ The first storage contracts are:
 - `CVPixelBufferStorage` for byte ownership and scoped access;
 - `CVPlanarStorageLease` for one platform owner exposing multiple planes;
 - `CVPixelBufferAccessCoordinator` for matching backend lock and unlock calls;
-- `CVPackedPixelBuffer<Storage, Attachments>` for validated packed image buffers.
+- `CVPackedPixelBuffer` for validated packed image buffers.
 - `CVPlanarPixelBuffer<Storage, Attachments>` for validated per-plane storage
   leases and buffer-wide access exclusion.
 - `CVLeasedPlanarPixelBuffer<StorageLease, Attachments>` for a single shared
@@ -152,14 +155,16 @@ The first storage contracts are:
 - `CVPackedPlatformStorageLease` and `CVPlanarPlatformStorageLease` for
   platform-backed packed and single-owner planar resources.
 
-Concrete buffer and storage types are generic. This keeps Embedded Swift on
-static dispatch while preserving protocol-based extension points.
+The Apple-shaped packed buffer and its owned/external memory implementations are
+non-generic fixed-layout classes. Storage and coordinator injection remains
+generic at initializer boundaries and is converted once into fixed operations.
+This preserves protocol-based extension points without retaining target-specific
+dependent class layouts. Planar and shared-planar implementations remain generic
+where their plane collections already provide a fixed stored representation.
 
 `CVBufferAttachments` is the public concrete attachment type used by the
-default packed and planar buffer initializers. It exports its interface so an
-Embedded downstream module can specialize those generic buffers while linking
-the `CVBufferAttachmentStorage` witness from OpenCoreVideo. This is a metadata
-linkage requirement only; attachment values and pixel storage retain their
+default packed and planar buffer initializers. Packed buffers retain this
+concrete owner directly; attachment values and pixel storage retain their
 existing owners and are not materialized or copied.
 
 The attachment owner stores an ordered array of key/value entries inside a
@@ -209,15 +214,17 @@ descriptions behind `CVStateLock`, replaces registrations atomically by format
 identifier, and returns coherent snapshots. Known standard formats are checked
 against buffer layouts so their FourCC and memory layout cannot disagree.
 
-The current built-in inventory covers 44 byte-aligned formats: common packed
-RGB and grayscale layouts, integer and floating-point component layouts,
-depth/disparity scalars, 8/10/16-bit bi-planar YCbCr at 4:2:0, 4:2:2, and
-4:4:4, and alpha-bearing bi/tri-planar layouts. Odd-dimension subsampling and
-stored component widths are validated against the concrete plane layout.
-Indexed, fractional block-packed, Bayer/sensel, and compressed Apple formats
-require a separate block-layout or codec contract and remain tracked in
-`APPLE_API_TRACE.md`; custom formats can be validated and registered without
-placeholder descriptions.
+The current built-in inventory covers 74 formats: common packed RGB and
+grayscale layouts, integer and floating-point components, depth/disparity,
+8/10/16-bit planar YCbCr, alpha-bearing planar layouts, block-packed YCbCr,
+Bayer, and sensel layouts. `CVPixelBufferBlockLayout` computes row and storage
+block counts with checked ceiling division and horizontal/vertical alignment;
+it therefore represents fractional bytes per pixel without inventing an
+integer byte width. Odd dimensions, block alignment, component subsampling,
+black-block byte counts, and storage capacity are validated against the
+concrete layout. Palette-dependent indexed formats and compressed formats
+remain tracked in `APPLE_API_TRACE.md`; the registry does not advertise them
+without a complete palette or codec capability contract.
 
 ### Pixel buffer pools
 
@@ -331,7 +338,7 @@ the same information for protocol-oriented code.
 
 Unavoidable differences from Apple's C and Core Foundation ABI are explicit:
 
-- creation uses typed throwing initializers and generic storage leases instead of
+- creation uses typed throwing initializers and storage leases instead of
   an allocator, `CVReturn`, `CFDictionary`, and an out parameter;
 - invalid plane indexes are typed errors instead of zero or null results;
 - `CVPixelBufferGetBaseAddressOfPlane` is not reproduced because a returned
@@ -421,19 +428,20 @@ handler executes while the mutex is held.
 | Logical state | Native | WASM | Embedded | Read / mutation entry points | Release |
 |---|---|---|---|---|---|
 | Buffer attachments | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | COW snapshot under lock; search/materialize outside; generation-checked replacement under lock | attachment owner |
-| External pixel or binary storage | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve access under lock; byte closure and release handler outside | storage lease, exactly once |
+| Owned/external pixel or binary storage | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve access under lock; coordinator and byte closure outside | memory owner, exactly once |
 | Pixel-buffer pool | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | reserve and commit metadata under lock; allocation, stream yield/finish, and callbacks outside | pool, checked-out storage, or explicit shutdown |
 | Pixel-format registry | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | `CVStateLock` / `Mutex<State>` | snapshot or atomic replacement under lock; description construction outside | registry |
+| Host-clock provider | `Mutex<State>` | `Mutex<State>` | `Mutex<State>` | install before activation; current freezes one concrete clock reference | process-lifetime provider |
 
 Recursive attachment containers are immutable values with Swift copy-on-write
 backing on every target. An empty `CVBinaryAttachment` has no external storage
 owner and lends only a zero-length scoped view; it does not introduce mutable
 shared state or a target-specific synchronization branch.
 
-Public concrete types used as generic arguments by Embedded downstream modules
-must preserve their conformance metadata in the defining module. A downstream
-module must not recreate storage or erase the generic boundary merely to satisfy
-linkage.
+Packed storage and buffer owners keep a fixed stored layout on every target.
+Coordinator and custom-storage protocols are accepted at initializer boundaries;
+the initialized object retains fixed operations and never weakens its
+synchronization or ownership contract by target.
 
 The lock protects only lease state. Backend access coordination and the caller's
 pixel-byte closure execute after the state lock is released.
@@ -477,17 +485,17 @@ new failure category requires an explicit ABI decision.
 7. [Complete] Implement the single-owner shared planar storage contract.
 8. [Complete] Implement pool allocation, recycling, thresholds, and flush
    behavior.
-9. [Complete] Define generic packed and planar native-storage integration
-   contracts. Browser, replay, embedded, and Jetson concrete adapters remain in
+9. [Complete] Define packed and planar native-storage integration contracts.
+   Browser, replay, embedded, and Jetson concrete adapters remain in
    separate modules.
 10. [Complete] Add external conformance tests against Apple Core Video for
     attachments, packed metadata and access, planar metadata, and pool
     allocation-threshold behavior.
 11. [Complete] Implement retained zero-copy binary attachment storage.
 12. [Complete] Implement image geometry and Apple differential behavior.
-13. [Complete] Implement the race-safe format registry and 44 byte-aligned
-    standard format descriptions. Block-packed, indexed, Bayer/sensel, and
-    compressed format families remain explicitly tracked.
+13. [Complete] Implement the race-safe format registry and 74 standard format
+    descriptions, including block-packed YCbCr, Bayer, and sensel layouts.
+    Palette-dependent indexed and compressed families remain explicitly tracked.
 14. [Complete] Implement bounded broadcast free-buffer notifications,
     subscriber termination, idempotent shutdown, and post-shutdown failure.
 15. [Complete] Implement the complete `CVReturn` constant range and exhaustive

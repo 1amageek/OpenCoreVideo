@@ -1,22 +1,49 @@
-public final class CVExternalPixelBufferStorage<
-    Coordinator: CVPixelBufferAccessCoordinator
->:
+public final class CVExternalPixelBufferStorage:
     CVPixelBufferStorage
 {
     public let byteCount: Int
     public let accessCapabilities: CVPixelBufferAccessCapabilities
 
-    private let lease: CVPixelBufferMemoryLease<Coordinator>
+    private let owner: CVPixelBufferMemoryOwner
+    // Keep the class layout independent of Coordinator without boxing a protocol
+    // existential in the pinned Swift 6.4 regular-WASI runtime.
+    private let coordinator: CVPixelBufferAccessCoordinatorAdapter
+
+    internal var operations: CVPixelBufferStorageOperations {
+        CVPixelBufferStorageOperations(
+            owner: owner,
+            coordinator: coordinator
+        )
+    }
 
     /// Creates a lease over caller-provided memory without copying its bytes.
     ///
     /// Ownership transfers only after this initializer succeeds. The release
     /// handler is invoked exactly once when the final storage lease is released.
-    public init(
+    public convenience init<Coordinator: CVPixelBufferAccessCoordinator>(
         baseAddress: UnsafeMutableRawPointer,
         byteCount: Int,
         accessCapabilities: CVPixelBufferAccessCapabilities,
         accessCoordinator: Coordinator,
+        releaseHandler:
+            @escaping @Sendable (UnsafeMutableRawPointer, Int) -> Void
+    ) throws(CVPixelBufferError) {
+        try self.init(
+            baseAddress: baseAddress,
+            byteCount: byteCount,
+            accessCapabilities: accessCapabilities,
+            coordinator: CVPixelBufferAccessCoordinatorAdapter(
+                accessCoordinator
+            ),
+            releaseHandler: releaseHandler
+        )
+    }
+
+    private init(
+        baseAddress: UnsafeMutableRawPointer,
+        byteCount: Int,
+        accessCapabilities: CVPixelBufferAccessCapabilities,
+        coordinator: CVPixelBufferAccessCoordinatorAdapter,
         releaseHandler:
             @escaping @Sendable (UnsafeMutableRawPointer, Int) -> Void
     ) throws(CVPixelBufferError) {
@@ -29,30 +56,29 @@ public final class CVExternalPixelBufferStorage<
 
         self.byteCount = byteCount
         self.accessCapabilities = accessCapabilities
-        self.lease = CVPixelBufferMemoryLease(
+        self.owner = CVPixelBufferMemoryOwner(
             baseAddress: baseAddress,
             byteCount: byteCount,
             accessCapabilities: accessCapabilities,
-            coordinator: accessCoordinator,
-            releaseHandler: releaseHandler
+            releaseOperation: .custom(releaseHandler)
         )
+        self.coordinator = coordinator
     }
 
     public func withReadAccess(
         _ body: (borrowing Span<UInt8>) -> Void
     ) throws(CVPixelBufferError) {
-        try lease.withReadAccess(body)
+        try owner.withReadAccess(coordinator: coordinator, body)
     }
 
     public func withWriteAccess(
         _ body: (inout MutableSpan<UInt8>) -> Void
     ) throws(CVPixelBufferError) {
-        try lease.withWriteAccess(body)
+        try owner.withWriteAccess(coordinator: coordinator, body)
     }
 }
 
-extension CVExternalPixelBufferStorage
-where Coordinator == CVNoOpPixelBufferAccessCoordinator {
+extension CVExternalPixelBufferStorage {
     public convenience init(
         baseAddress: UnsafeMutableRawPointer,
         byteCount: Int,
@@ -64,7 +90,7 @@ where Coordinator == CVNoOpPixelBufferAccessCoordinator {
             baseAddress: baseAddress,
             byteCount: byteCount,
             accessCapabilities: accessCapabilities,
-            accessCoordinator: CVNoOpPixelBufferAccessCoordinator(),
+            coordinator: CVPixelBufferAccessCoordinatorAdapter(),
             releaseHandler: releaseHandler
         )
     }

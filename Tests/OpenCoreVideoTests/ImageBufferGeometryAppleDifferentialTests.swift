@@ -84,10 +84,7 @@ struct ImageBufferGeometryAppleDifferentialTests {
         )
     }
 
-    private func makePortableBuffer() throws -> CVPackedPixelBuffer<
-        CVOwnedPixelBufferStorage<CVNoOpPixelBufferAccessCoordinator>,
-        CVBufferAttachments
-    > {
+    private func makePortableBuffer() throws -> CVPackedPixelBuffer {
         try CVPackedPixelBuffer(
             dimensions: CVPixelDimensions(width: 720, height: 480),
             pixelFormat: .bgra32,

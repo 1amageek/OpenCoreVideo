@@ -29,3 +29,19 @@ public func CVPixelFormatDescriptionRegisterDescriptionWithPixelFormatType(
     }
     CVPixelFormatDescription.Registry.shared.register(description)
 }
+
+public func CVPixelFormatTypeCopyFourCharCodeString(
+    _ pixelFormat: CVPixelFormatType
+) -> String {
+    let rawValue = pixelFormat.rawValue
+    let bytes = [
+        UInt8(truncatingIfNeeded: rawValue >> 24),
+        UInt8(truncatingIfNeeded: rawValue >> 16),
+        UInt8(truncatingIfNeeded: rawValue >> 8),
+        UInt8(truncatingIfNeeded: rawValue)
+    ]
+    for byte in bytes where !(0x20 ... 0x7E).contains(byte) {
+        return String(rawValue)
+    }
+    return String(decoding: bytes, as: UTF8.self)
+}

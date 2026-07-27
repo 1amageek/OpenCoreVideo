@@ -199,10 +199,7 @@ where Attachments == CVBufferAttachments {
 
 extension CVPlanarPixelBuffer
 where
-    Storage ==
-        CVOwnedPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
+    Storage == CVOwnedPixelBufferStorage,
     Attachments == CVBufferAttachments
 {
     public convenience init(
@@ -225,10 +222,7 @@ where
 
 extension CVPlanarPixelBuffer
 where
-    Storage ==
-        CVExternalPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
+    Storage == CVExternalPixelBufferStorage,
     Attachments == CVBufferAttachments
 {
     /// Creates independent zero-copy plane leases over caller-provided memory.

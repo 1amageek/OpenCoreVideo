@@ -195,17 +195,8 @@ struct PixelBufferAppleDifferentialTests {
                 bytesPerRow: 8
             )
         )
-        var portableFirst:
-            CVPackedPixelBuffer<
-                CVPooledPixelBufferStorage<
-                    CVOwnedPixelBufferPoolAllocator<
-                        CVNoOpPixelBufferAccessCoordinator
-                    >
-                >,
-                CVBufferAttachments
-            >? = try portablePool.makePixelBuffer(
-                allocationThreshold: 1
-            )
+        var portableFirst: CVPackedPixelBuffer? =
+            try portablePool.makePixelBuffer(allocationThreshold: 1)
         #expect(portableFirst != nil)
         #expect(throws: CVPixelBufferError
             .wouldExceedAllocationThreshold(1)) {

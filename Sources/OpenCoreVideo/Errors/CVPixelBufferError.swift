@@ -2,6 +2,9 @@ public enum CVPixelBufferError: Error, Sendable, Equatable {
     case invalidDimensions(width: Int, height: Int)
     case invalidPixelFormat(UInt32)
     case invalidBytesPerPixel(Int)
+    case invalidBlockSize(CVImageSize)
+    case invalidBytesPerBlock(Int)
+    case invalidBlockAlignment(CVPixelFormatDescription.Dimensions)
     case pixelFormatBytesPerPixelMismatch(
         format: CVPixelFormatType,
         expected: Int,

@@ -9,9 +9,7 @@ public final class CVBinaryAttachment:
 {
     public let byteCount: Int
 
-    private let storage: CVExternalPixelBufferStorage<
-        CVNoOpPixelBufferAccessCoordinator
-    >?
+    private let storage: CVExternalPixelBufferStorage?
 
     /// Creates an empty binary attachment without allocating storage.
     public init() {

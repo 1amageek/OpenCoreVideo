@@ -145,12 +145,7 @@ struct AttachmentAppleDifferentialTests {
         return buffer
     }
 
-    private func makePortableBuffer() throws -> CVPackedPixelBuffer<
-        CVOwnedPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
-        CVBufferAttachments
-    > {
+    private func makePortableBuffer() throws -> CVPackedPixelBuffer {
         let dimensions = try CVPixelDimensions(width: 1, height: 1)
         let layout = try CVPackedPixelBufferLayout(
             dimensions: dimensions,

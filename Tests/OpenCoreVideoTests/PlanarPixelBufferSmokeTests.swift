@@ -5,16 +5,12 @@ import Testing
 @Suite("Planar pixel buffer smoke")
 struct PlanarPixelBufferSmokeTests {
     typealias OwnedBuffer = CVPlanarPixelBuffer<
-        CVOwnedPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
+        CVOwnedPixelBufferStorage,
         CVBufferAttachments
     >
 
     typealias ExternalBuffer = CVPlanarPixelBuffer<
-        CVExternalPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
+        CVExternalPixelBufferStorage,
         CVBufferAttachments
     >
 
@@ -174,9 +170,7 @@ struct PlanarPixelBufferSmokeTests {
     @Test("Invalid plane range and insufficient storage are typed failures")
     func planeRangeAndStorageValidation() throws {
         let layout = try makeSinglePlaneLayout()
-        let storage = try CVOwnedPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >(byteCount: 4)
+        let storage = try CVOwnedPixelBufferStorage(byteCount: 4)
 
         #expect(throws: CVPixelBufferError.planeStorageTooSmall(
             plane: 0,

@@ -1,7 +1,9 @@
 extension CVPixelFormatDescription {
     internal static var standardDescriptions: [CVPixelFormatDescription] {
         makePackedStandardPixelFormatDescriptions()
+            + makeBlockPackedStandardPixelFormatDescriptions()
             + makePlanarStandardPixelFormatDescriptions()
+            + makeLegacyPlanarStandardPixelFormatDescriptions()
     }
 
     internal static func standardDescription(
@@ -12,7 +14,17 @@ extension CVPixelFormatDescription {
         ) {
             return packed
         }
-        return makePlanarStandardPixelFormatDescription(
+        if let blockPacked = makeBlockPackedStandardPixelFormatDescription(
+            for: pixelFormat
+        ) {
+            return blockPacked
+        }
+        if let planar = makePlanarStandardPixelFormatDescription(
+            for: pixelFormat
+        ) {
+            return planar
+        }
+        return makeLegacyPlanarStandardPixelFormatDescription(
             for: pixelFormat
         )
     }

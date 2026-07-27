@@ -4,7 +4,9 @@ public enum CVPixelFormatDescriptionError: Error, Sendable, Equatable {
     case emptyComponents
     case invalidBlockSize(CVImageSize)
     case invalidBitsPerBlock(Int)
+    case bitsPerBlockNotByteAligned(Int)
     case invalidBitsPerComponent(Int)
+    case invalidBlackBlockByteCount(expected: Int, actual: Int)
     case invalidBlockAlignment(
         CVPixelFormatDescription.Dimensions
     )

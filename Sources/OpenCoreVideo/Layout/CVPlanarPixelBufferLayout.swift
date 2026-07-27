@@ -59,16 +59,15 @@ public struct CVPlanarPixelBufferLayout: Sendable, Hashable {
                     dimensions.height,
                     pixelLayout.subsampling.vertical
                 )
-                let bitsPerByte = 8
-                guard pixelLayout.blockSize
-                        == CVImageSize(width: 1, height: 1),
-                      pixelLayout.bitsPerBlock.isMultiple(
-                        of: bitsPerByte
-                      ),
+                guard pixelLayout.bitsPerBlock.isMultiple(of: 8),
                       planes[index].dimensions.width == expectedWidth,
                       planes[index].dimensions.height == expectedHeight,
-                      planes[index].bytesPerElement
-                        == pixelLayout.bitsPerBlock / bitsPerByte else {
+                      planes[index].blockLayout.blockSize
+                        == pixelLayout.blockSize,
+                      planes[index].blockLayout.bytesPerBlock
+                        == pixelLayout.bitsPerBlock / 8,
+                      planes[index].blockLayout.blockAlignment
+                        == pixelLayout.blockAlignment else {
                     throw .pixelFormatPlaneLayoutMismatch(
                         format: pixelFormat,
                         plane: index

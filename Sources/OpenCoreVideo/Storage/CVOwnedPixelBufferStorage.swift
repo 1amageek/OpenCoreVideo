@@ -1,17 +1,39 @@
-public final class CVOwnedPixelBufferStorage<
-    Coordinator: CVPixelBufferAccessCoordinator
->:
+public final class CVOwnedPixelBufferStorage:
     CVPixelBufferStorage
 {
     public let byteCount: Int
     public let accessCapabilities: CVPixelBufferAccessCapabilities
 
-    private let lease: CVPixelBufferMemoryLease<Coordinator>
+    private let owner: CVPixelBufferMemoryOwner
+    // Fixed-layout operations avoid the pinned Swift 6.4 regular-WASI generic
+    // stored-property and boxed-existential runtime defects.
+    private let coordinator: CVPixelBufferAccessCoordinatorAdapter
 
-    public init(
+    internal var operations: CVPixelBufferStorageOperations {
+        CVPixelBufferStorageOperations(
+            owner: owner,
+            coordinator: coordinator
+        )
+    }
+
+    public convenience init<Coordinator: CVPixelBufferAccessCoordinator>(
         byteCount: Int,
         alignment: Int = 64,
         accessCoordinator: Coordinator
+    ) throws(CVPixelBufferError) {
+        try self.init(
+            byteCount: byteCount,
+            alignment: alignment,
+            coordinator: CVPixelBufferAccessCoordinatorAdapter(
+                accessCoordinator
+            )
+        )
+    }
+
+    private init(
+        byteCount: Int,
+        alignment: Int,
+        coordinator: CVPixelBufferAccessCoordinatorAdapter
     ) throws(CVPixelBufferError) {
         guard byteCount > 0 else {
             throw .invalidStorageSize(byteCount)
@@ -20,43 +42,58 @@ public final class CVOwnedPixelBufferStorage<
             throw .invalidAlignment(alignment)
         }
 
-        let baseAddress = UnsafeMutableRawPointer.allocate(
+        let baseAddress = allocateOwnedPixelBufferMemory(
             byteCount: byteCount,
             alignment: alignment
-        )
-        baseAddress.initializeMemory(
-            as: UInt8.self,
-            repeating: 0,
-            count: byteCount
         )
 
         self.byteCount = byteCount
         self.accessCapabilities = .readWrite
-        self.lease = CVPixelBufferMemoryLease(
+        self.owner = CVPixelBufferMemoryOwner(
             baseAddress: baseAddress,
             byteCount: byteCount,
             accessCapabilities: .readWrite,
-            coordinator: accessCoordinator
-        ) { baseAddress, _ in
-            baseAddress.deallocate()
-        }
+            releaseOperation: .deallocate
+        )
+        self.coordinator = coordinator
     }
 
     public func withReadAccess(
         _ body: (borrowing Span<UInt8>) -> Void
     ) throws(CVPixelBufferError) {
-        try lease.withReadAccess(body)
+        try owner.withReadAccess(coordinator: coordinator, body)
     }
 
     public func withWriteAccess(
         _ body: (inout MutableSpan<UInt8>) -> Void
     ) throws(CVPixelBufferError) {
-        try lease.withWriteAccess(body)
+        try owner.withWriteAccess(coordinator: coordinator, body)
     }
 }
 
-extension CVOwnedPixelBufferStorage
-where Coordinator == CVNoOpPixelBufferAccessCoordinator {
+// The returned allocation is initialized for its complete byte range. Ownership
+// transfers to CVPixelBufferMemoryOwner immediately after this function returns,
+// and that owner performs exactly one matching deallocation after all borrows end.
+// The non-generic boundary keeps raw allocation and initialization independent
+// from the storage coordinator specialization.
+@inline(never)
+internal func allocateOwnedPixelBufferMemory(
+    byteCount: Int,
+    alignment: Int
+) -> UnsafeMutableRawPointer {
+    let baseAddress = UnsafeMutableRawPointer.allocate(
+        byteCount: byteCount,
+        alignment: alignment
+    )
+    baseAddress.initializeMemory(
+        as: UInt8.self,
+        repeating: 0,
+        count: byteCount
+    )
+    return baseAddress
+}
+
+extension CVOwnedPixelBufferStorage {
     public convenience init(
         byteCount: Int,
         alignment: Int = 64
@@ -64,7 +101,7 @@ where Coordinator == CVNoOpPixelBufferAccessCoordinator {
         try self.init(
             byteCount: byteCount,
             alignment: alignment,
-            accessCoordinator: CVNoOpPixelBufferAccessCoordinator()
+            coordinator: CVPixelBufferAccessCoordinatorAdapter()
         )
     }
 }

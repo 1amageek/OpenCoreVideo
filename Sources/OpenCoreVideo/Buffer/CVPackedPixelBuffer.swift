@@ -1,13 +1,10 @@
-public final class CVPackedPixelBuffer<
-    Storage: CVPixelBufferStorage,
-    Attachments: CVBufferAttachmentStorage
->: CVPixelBuffer {
-    public typealias AttachmentStorage = Attachments
+public final class CVPackedPixelBuffer: CVPixelBuffer {
+    public typealias AttachmentStorage = CVBufferAttachments
 
     public let layout: CVPackedPixelBufferLayout
-    public let attachments: Attachments
+    public let attachments: CVBufferAttachments
 
-    private let storage: Storage
+    private let storage: CVPixelBufferStorageOperations
 
     public var dimensions: CVPixelDimensions {
         layout.dimensions
@@ -29,10 +26,34 @@ public final class CVPackedPixelBuffer<
         storage.accessCapabilities
     }
 
-    public init(
+    public convenience init<Storage: CVPixelBufferStorage>(
         layout: CVPackedPixelBufferLayout,
         storage: Storage,
-        attachments: Attachments
+        attachments: CVBufferAttachments
+    ) throws(CVPixelBufferError) {
+        let storageOperations = CVPixelBufferStorageOperations(storage)
+        try self.init(
+            layout: layout,
+            storage: storageOperations,
+            attachments: attachments
+        )
+    }
+
+    public convenience init<Storage: CVPixelBufferStorage>(
+        layout: CVPackedPixelBufferLayout,
+        storage: Storage
+    ) throws(CVPixelBufferError) {
+        try self.init(
+            layout: layout,
+            storage: storage,
+            attachments: CVBufferAttachments()
+        )
+    }
+
+    private init(
+        layout: CVPackedPixelBufferLayout,
+        storage: CVPixelBufferStorageOperations,
+        attachments: CVBufferAttachments
     ) throws(CVPixelBufferError) {
         guard storage.byteCount >= layout.byteCount else {
             throw .storageTooSmall(
@@ -46,41 +67,6 @@ public final class CVPackedPixelBuffer<
         self.attachments = attachments
     }
 
-    public func withReadBytes(
-        _ body: (borrowing Span<UInt8>) -> Void
-    ) throws(CVPixelBufferError) {
-        try storage.withReadAccess(body)
-    }
-
-    public func withWriteBytes(
-        _ body: (inout MutableSpan<UInt8>) -> Void
-    ) throws(CVPixelBufferError) {
-        try storage.withWriteAccess(body)
-    }
-}
-
-extension CVPackedPixelBuffer
-where Attachments == CVBufferAttachments {
-    public convenience init(
-        layout: CVPackedPixelBufferLayout,
-        storage: Storage
-    ) throws(CVPixelBufferError) {
-        try self.init(
-            layout: layout,
-            storage: storage,
-            attachments: CVBufferAttachments()
-        )
-    }
-}
-
-extension CVPackedPixelBuffer
-where
-    Storage ==
-        CVOwnedPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
-    Attachments == CVBufferAttachments
-{
     public convenience init(
         dimensions: CVPixelDimensions,
         pixelFormat: CVPixelFormatType,
@@ -94,8 +80,8 @@ where
             bytesPerPixel: bytesPerPixel,
             bytesPerRow: bytesPerRow
         )
-        let storage = try CVOwnedPixelBufferStorage(
-            byteCount: layout.byteCount,
+        let storage = try CVPixelBufferStorageOperations(
+            ownedByteCount: layout.byteCount,
             alignment: alignment
         )
         try self.init(
@@ -103,5 +89,41 @@ where
             storage: storage,
             attachments: CVBufferAttachments()
         )
+    }
+
+    public convenience init(
+        dimensions: CVPixelDimensions,
+        pixelFormat: CVPixelFormatType,
+        blockLayout: CVPixelBufferBlockLayout,
+        bytesPerRow: Int,
+        alignment: Int = 64
+    ) throws(CVPixelBufferError) {
+        let layout = try CVPackedPixelBufferLayout(
+            dimensions: dimensions,
+            pixelFormat: pixelFormat,
+            blockLayout: blockLayout,
+            bytesPerRow: bytesPerRow
+        )
+        let storage = try CVPixelBufferStorageOperations(
+            ownedByteCount: layout.byteCount,
+            alignment: alignment
+        )
+        try self.init(
+            layout: layout,
+            storage: storage,
+            attachments: CVBufferAttachments()
+        )
+    }
+
+    public func withReadBytes(
+        _ body: (borrowing Span<UInt8>) -> Void
+    ) throws(CVPixelBufferError) {
+        try storage.withReadAccess(body)
+    }
+
+    public func withWriteBytes(
+        _ body: (inout MutableSpan<UInt8>) -> Void
+    ) throws(CVPixelBufferError) {
+        try storage.withWriteAccess(body)
     }
 }

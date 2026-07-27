@@ -41,6 +41,32 @@ struct PixelBufferSmokeTests {
         #expect(readAddress == writeAddress)
     }
 
+    @Test("Owned block-packed storage preserves the complete byte region")
+    func ownedBlockPackedStorageRoundTrip() throws {
+        let dimensions = try CVPixelDimensions(width: 13, height: 2)
+        let buffer = try CVPackedPixelBuffer(
+            dimensions: dimensions,
+            pixelFormat: .yCbCr422Packed10,
+            blockLayout: CVPixelBufferBlockLayout(
+                blockSize: CVImageSize(width: 6, height: 1),
+                bytesPerBlock: 16,
+                blockAlignment: .init(horizontal: 8, vertical: 1)
+            ),
+            bytesPerRow: 128
+        )
+
+        #expect(buffer.byteCount == 256)
+        try buffer.withWriteBytes { bytes in
+            bytes[0] = 17
+            bytes[255] = 99
+        }
+
+        try buffer.withReadBytes { bytes in
+            #expect(bytes[0] == 17)
+            #expect(bytes[255] == 99)
+        }
+    }
+
     @Test("Invalid dimensions and packed layouts are typed failures")
     func invalidLayoutFailures() throws {
         #expect(throws: CVPixelBufferError.invalidDimensions(
@@ -65,9 +91,7 @@ struct PixelBufferSmokeTests {
         }
 
         #expect(throws: CVPixelBufferError.invalidStorageSize(0)) {
-            _ = try CVOwnedPixelBufferStorage<
-                CVNoOpPixelBufferAccessCoordinator
-            >(byteCount: 0)
+            _ = try CVOwnedPixelBufferStorage(byteCount: 0)
         }
     }
 

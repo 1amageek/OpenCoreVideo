@@ -19,7 +19,7 @@ public struct CVOwnedPixelBufferPoolAllocator<
 
     public func storage(
         byteCount: Int
-    ) throws(CVPixelBufferError) -> CVOwnedPixelBufferStorage<Coordinator> {
+    ) throws(CVPixelBufferError) -> CVOwnedPixelBufferStorage {
         try CVOwnedPixelBufferStorage(
             byteCount: byteCount,
             alignment: alignment,

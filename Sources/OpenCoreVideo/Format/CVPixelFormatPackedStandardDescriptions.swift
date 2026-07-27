@@ -442,13 +442,18 @@ private func makeGenericScalarDescription(
     )
 }
 
-private func makePackedDescription(
+internal func makePackedDescription(
     pixelFormat: CVPixelFormatType,
     name: String,
     components: CVPixelFormatDescription.Components,
     componentRange: CVPixelFormatDescription.ComponentRange?,
+    blockSize: CVImageSize = CVImageSize(width: 1, height: 1),
     bitsPerBlock: Int,
     bitsPerComponent: Int,
+    blockAlignment: CVPixelFormatDescription.Dimensions =
+        unitPixelFormatDimensions(),
+    subsampling: CVPixelFormatDescription.Dimensions =
+        unitPixelFormatDimensions(),
     blackBlock: [UInt8]?,
     compatibility: CVPixelFormatDescription.Compatibility
 ) -> CVPixelFormatDescription {
@@ -459,11 +464,11 @@ private func makePackedDescription(
         componentRange: componentRange,
         planeConfiguration: .nonPlanar(
             CVPixelFormatDescription.PixelLayout(
-                validatedBlockSize: CVImageSize(width: 1, height: 1),
+                validatedBlockSize: blockSize,
                 bitsPerBlock: bitsPerBlock,
                 bitsPerComponent: bitsPerComponent,
-                blockAlignment: unitPixelFormatDimensions(),
-                subsampling: unitPixelFormatDimensions(),
+                blockAlignment: blockAlignment,
+                subsampling: subsampling,
                 blackBlock: blackBlock,
                 compatibility: compatibility
             )

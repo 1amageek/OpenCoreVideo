@@ -56,6 +56,10 @@ struct CVReturnTests {
             )) == OpenCoreVideo.kCVReturnInvalidPixelBufferAttributes
         )
         #expect(
+            CVReturnForPixelBufferError(.invalidBytesPerBlock(0))
+                == OpenCoreVideo.kCVReturnInvalidPixelBufferAttributes
+        )
+        #expect(
             CVReturnForPixelBufferError(.invalidMinimumBufferCount(-1))
                 == OpenCoreVideo.kCVReturnInvalidPoolAttributes
         )

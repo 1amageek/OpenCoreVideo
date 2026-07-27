@@ -49,11 +49,9 @@ struct PixelBufferPoolTests {
             allocator: PoolAllocator(probe: probe)
         )
 
-        var first:
-            CVPackedPixelBuffer<
-                CVPooledPixelBufferStorage<PoolAllocator>,
-                CVBufferAttachments
-            >? = try pool.makePixelBuffer(allocationThreshold: 1)
+        var first: CVPackedPixelBuffer? = try pool.makePixelBuffer(
+            allocationThreshold: 1
+        )
         #expect(first != nil)
 
         #expect(throws: CVPixelBufferError
@@ -355,9 +353,7 @@ private struct PoolAllocator: CVPixelBufferPoolAllocator {
 
     func storage(
         byteCount: Int
-    ) throws(CVPixelBufferError) -> CVOwnedPixelBufferStorage<
-        CVNoOpPixelBufferAccessCoordinator
-    > {
+    ) throws(CVPixelBufferError) -> CVOwnedPixelBufferStorage {
         try probe.recordAllocation()
         return try CVOwnedPixelBufferStorage(
             byteCount: byteCount + byteCountAdjustment
@@ -387,9 +383,7 @@ private final class ReleasingPoolStorage: CVPixelBufferStorage {
         storage.accessCapabilities
     }
 
-    private let storage: CVOwnedPixelBufferStorage<
-        CVNoOpPixelBufferAccessCoordinator
-    >
+    private let storage: CVOwnedPixelBufferStorage
     private let releaseCount: PoolReleaseCounter
 
     init(

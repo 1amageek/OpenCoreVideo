@@ -394,20 +394,27 @@ private func makeRGB30AlphaBiPlanarDescription()
     )
 }
 
-private func makePlaneLayout(
+internal func makePlaneLayout(
+    blockSize: CVImageSize = CVImageSize(width: 1, height: 1),
     bitsPerBlock: Int,
     bitsPerComponent: Int,
+    blockAlignment: CVPixelFormatDescription.Dimensions =
+        unitPixelFormatDimensions(),
     subsampling: CVPixelFormatDescription.Dimensions,
-    blackBlock: [UInt8]?
+    blackBlock: [UInt8]?,
+    compatibility: CVPixelFormatDescription.Compatibility = [
+        .ioSurfaceCoreAnimation,
+        .metalTexture
+    ]
 ) -> CVPixelFormatDescription.PixelLayout {
     CVPixelFormatDescription.PixelLayout(
-        validatedBlockSize: CVImageSize(width: 1, height: 1),
+        validatedBlockSize: blockSize,
         bitsPerBlock: bitsPerBlock,
         bitsPerComponent: bitsPerComponent,
-        blockAlignment: unitPixelFormatDimensions(),
+        blockAlignment: blockAlignment,
         subsampling: subsampling,
         blackBlock: blackBlock,
-        compatibility: [.ioSurfaceCoreAnimation, .metalTexture]
+        compatibility: compatibility
     )
 }
 

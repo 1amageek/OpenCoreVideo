@@ -25,7 +25,7 @@ Statuses mean:
 | `CVImageBuffer` | `CVImageBuffer.h` | Encoded size, clean rect, display size, pixel aspect, and origin over attachment-bearing buffers | Implemented | Portable behavior and Apple geometry differential tests |
 | `CVPixelBuffer` packed storage | `CVPixelBuffer.h` | Owned/external leases, layout validation, scoped read/write access | Implemented | Address identity, release, and failure tests |
 | `CVPixelBuffer` planar storage | `CVPixelBuffer.h` | Independent-plane and single-owner planar leases | Implemented | Plane identity, overlap, lifetime, and lock tests |
-| Pixel format descriptions | `CVPixelFormatDescription.h` | Race-safe registry plus 44 byte-aligned RGB, component, depth/disparity, and planar YCbCr descriptions | Partial | Indexed, fractional block-packed, Bayer/sensel, and compressed-format contracts |
+| Pixel format descriptions | `CVPixelFormatDescription.h` | Race-safe registry plus 74 RGB, component, depth/disparity, planar YCbCr, block-packed YCbCr, Bayer, and sensel descriptions | Partial | Palette-dependent indexed formats and compressed-codec capability contracts |
 | Pixel buffer pools | `CVPixelBufferPool.h` | Generic pool, allocation/reuse/flush, bounded broadcast availability streams, subscriber termination, and shutdown | Implemented | Portable behavior and Apple threshold differential tests |
 | IOSurface-backed buffers | `CVPixelBufferIOSurface.h` | `CVPackedPlatformStorageLease` / `CVPlanarPlatformStorageLease` boundary | Adapter | Apple adapter conformance |
 | Metal buffers and textures | `CVMetalBuffer*.h`, `CVMetalTexture*.h` | Stable identity and scoped native-handle lease contract | Adapter | Cache lifetime and zero-copy projection tests |

@@ -6,24 +6,31 @@ public final class CVHostClockProvider: Sendable {
     )
 
     private enum State: Sendable {
-        case configurable((any CVHostClock)?)
-        case active(any CVHostClock)
+        case configurable(CVHostClockReference?)
+        case active(CVHostClockReference)
     }
 
     private typealias ClockResult = Result<
-        any CVHostClock,
+        CVHostClockReference,
         CVHostClockError
     >
 
     private let state: Mutex<State>
 
-    public init(initialClock: (any CVHostClock)? = nil) {
-        state = Mutex(.configurable(initialClock))
+    public init<Clock: CVHostClock>(initialClock: Clock?) {
+        state = Mutex(
+            .configurable(initialClock.map(CVHostClockReference.init))
+        )
     }
 
-    public func install(
-        _ clock: any CVHostClock
+    public convenience init() {
+        self.init(initialClock: Optional<CVHostClockReference>.none)
+    }
+
+    public func install<Clock: CVHostClock>(
+        _ clock: Clock
     ) throws(CVHostClockError) {
+        let clock = CVHostClockReference(clock)
         let result: Result<Void, CVHostClockError> = state.withLock { state in
             switch state {
             case .configurable:
@@ -38,7 +45,7 @@ public final class CVHostClockProvider: Sendable {
         }
     }
 
-    public func current() throws(CVHostClockError) -> any CVHostClock {
+    public func current() throws(CVHostClockError) -> CVHostClockReference {
         let result: ClockResult = state.withLock { state in
             switch state {
             case let .configurable(clock):
@@ -60,10 +67,10 @@ public final class CVHostClockProvider: Sendable {
     }
 }
 
-private func defaultCVHostClock() -> (any CVHostClock)? {
+private func defaultCVHostClock() -> CVHostClockReference? {
     #if hasFeature(Embedded)
     nil
     #else
-    CVSystemHostClock()
+    CVHostClockReference(CVSystemHostClock())
     #endif
 }

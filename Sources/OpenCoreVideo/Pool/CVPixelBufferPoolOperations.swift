@@ -6,10 +6,7 @@ public func CVPixelBufferPoolCreatePixelBuffer<
     Allocator: CVPixelBufferPoolAllocator
 >(
     _ pool: borrowing CVPixelBufferPool<Allocator>
-) throws(CVPixelBufferError) -> CVPackedPixelBuffer<
-    CVPooledPixelBufferStorage<Allocator>,
-    CVBufferAttachments
-> {
+) throws(CVPixelBufferError) -> CVPackedPixelBuffer {
     try pool.makePixelBuffer()
 }
 
@@ -22,10 +19,7 @@ public func CVPixelBufferPoolCreatePixelBufferWithAuxAttributes<
 >(
     _ pool: borrowing CVPixelBufferPool<Allocator>,
     allocationThreshold: Int?
-) throws(CVPixelBufferError) -> CVPackedPixelBuffer<
-    CVPooledPixelBufferStorage<Allocator>,
-    CVBufferAttachments
-> {
+) throws(CVPixelBufferError) -> CVPackedPixelBuffer {
     try pool.makePixelBuffer(
         allocationThreshold: allocationThreshold
     )

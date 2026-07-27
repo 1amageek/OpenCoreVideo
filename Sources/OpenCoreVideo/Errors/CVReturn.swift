@@ -40,6 +40,9 @@ public func CVReturnForPixelBufferError(
         return kCVReturnInvalidSize
 
     case .invalidBytesPerPixel,
+         .invalidBlockSize,
+         .invalidBytesPerBlock,
+         .invalidBlockAlignment,
          .invalidBytesPerRow,
          .invalidStorageSize,
          .invalidAlignment,

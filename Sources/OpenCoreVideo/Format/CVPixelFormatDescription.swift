@@ -34,8 +34,8 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
     }
 
     public struct Dimensions: Sendable, Hashable {
-        public var horizontal: Int
-        public var vertical: Int
+        public let horizontal: Int
+        public let vertical: Int
 
         public init(horizontal: Int, vertical: Int) {
             self.horizontal = horizontal
@@ -44,13 +44,13 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
     }
 
     public struct PixelLayout: Sendable, Equatable {
-        public var blockSize: CVImageSize
-        public var bitsPerBlock: Int
-        public var bitsPerComponent: Int?
-        public var blockAlignment: Dimensions
-        public var subsampling: Dimensions
-        public var blackBlock: [UInt8]?
-        public var compatibility: Compatibility
+        public let blockSize: CVImageSize
+        public let bitsPerBlock: Int
+        public let bitsPerComponent: Int?
+        public let blockAlignment: Dimensions
+        public let subsampling: Dimensions
+        public let blackBlock: [UInt8]?
+        public let compatibility: Compatibility
 
         public init(
             blockSize: CVImageSize = CVImageSize(width: 1, height: 1),
@@ -73,7 +73,13 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
             guard bitsPerBlock > 0 else {
                 throw .invalidBitsPerBlock(bitsPerBlock)
             }
+            guard bitsPerBlock.isMultiple(of: 8) else {
+                throw .bitsPerBlockNotByteAligned(bitsPerBlock)
+            }
             if let bitsPerComponent, bitsPerComponent <= 0 {
+                throw .invalidBitsPerComponent(bitsPerComponent)
+            }
+            if let bitsPerComponent, bitsPerComponent > bitsPerBlock {
                 throw .invalidBitsPerComponent(bitsPerComponent)
             }
             guard blockAlignment.horizontal > 0,
@@ -83,6 +89,15 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
             guard subsampling.horizontal > 0,
                   subsampling.vertical > 0 else {
                 throw .invalidSubsampling(subsampling)
+            }
+            if let blackBlock {
+                let expectedByteCount = bitsPerBlock / 8
+                guard blackBlock.count == expectedByteCount else {
+                    throw .invalidBlackBlockByteCount(
+                        expected: expectedByteCount,
+                        actual: blackBlock.count
+                    )
+                }
             }
             self.blockSize = blockSize
             self.bitsPerBlock = bitsPerBlock
@@ -117,17 +132,19 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
         case planar([PixelLayout])
     }
 
-    public var pixelFormatType: CVPixelFormatType
-    public var name: String
-    public var components: Components
-    public var componentRange: ComponentRange?
-    public var planeConfiguration: PlaneConfiguration
+    public let pixelFormatType: CVPixelFormatType
+    public let name: String
+    public let components: Components
+    public let componentRange: ComponentRange?
+    public let componentSubsampling: Dimensions?
+    public let planeConfiguration: PlaneConfiguration
 
     public init(
         pixelFormatType: CVPixelFormatType,
         name: String,
         components: Components,
         componentRange: ComponentRange? = nil,
+        componentSubsampling: Dimensions? = nil,
         planeConfiguration: PlaneConfiguration
     ) throws(CVPixelFormatDescriptionError) {
         guard pixelFormatType.rawValue != 0 else {
@@ -139,6 +156,12 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
         guard !components.isEmpty else {
             throw .emptyComponents
         }
+        if let componentSubsampling {
+            guard componentSubsampling.horizontal > 0,
+                  componentSubsampling.vertical > 0 else {
+                throw .invalidSubsampling(componentSubsampling)
+            }
+        }
         if case .planar(let planes) = planeConfiguration,
            planes.isEmpty {
             throw .invalidPlaneCount(planes.count)
@@ -147,6 +170,7 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
         self.name = name
         self.components = components
         self.componentRange = componentRange
+        self.componentSubsampling = componentSubsampling
         self.planeConfiguration = planeConfiguration
     }
 
@@ -155,12 +179,14 @@ public struct CVPixelFormatDescription: Sendable, Equatable {
         name: String,
         components: Components,
         componentRange: ComponentRange?,
+        componentSubsampling: Dimensions? = nil,
         planeConfiguration: PlaneConfiguration
     ) {
         self.pixelFormatType = pixelFormatType
         self.name = name
         self.components = components
         self.componentRange = componentRange
+        self.componentSubsampling = componentSubsampling
         self.planeConfiguration = planeConfiguration
     }
 }

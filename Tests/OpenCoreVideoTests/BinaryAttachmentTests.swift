@@ -111,12 +111,7 @@ struct BinaryAttachmentTests {
         #expect(releaseCount.withLock { $0 } == 1)
     }
 
-    private func makeBuffer() throws -> CVPackedPixelBuffer<
-        CVOwnedPixelBufferStorage<
-            CVNoOpPixelBufferAccessCoordinator
-        >,
-        CVBufferAttachments
-    > {
+    private func makeBuffer() throws -> CVPackedPixelBuffer {
         try CVPackedPixelBuffer(
             dimensions: CVPixelDimensions(width: 1, height: 1),
             pixelFormat: .bgra32,
