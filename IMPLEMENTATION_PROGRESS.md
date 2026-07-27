@@ -141,6 +141,9 @@ Embedded.
 - [x] Race-safe pixel-format description registry
 - [x] Forty-four byte-aligned standard-format descriptions
 - [x] Known-format versus memory-layout validation
+- [x] Non-deprecated Core Video host-time operations
+- [x] Race-safe, freeze-on-first-use host-clock provider
+- [x] Explicit Embedded host-clock injection and runtime verification
 
 ## Progress
 
@@ -169,6 +172,7 @@ Embedded.
 | Regular-WASM attachment runtime | Complete in debug and release configurations |
 | Image geometry | Complete for encoded size, clean rect, display size, pixel aspect, and origin |
 | Pixel-format registry | Complete for 44 byte-aligned packed and planar formats; block-packed and compressed families remain explicit inventory work |
+| Host time | Complete for the three active `CVHostTime.h` operations; deprecated `CVDisplayLink` is intentionally omitted |
 
 ## Test evidence
 
@@ -176,14 +180,14 @@ Verified on 2026-07-27:
 
 | Verification | Evidence |
 |---|---|
-| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 56 tests with no failures or skips |
-| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 56 tests, including registry, image-geometry, pool-notification, and result-code paths, with no failures, skips, or runtime warnings |
+| Native behavior | `xcodebuild test` with the fixed Swift 6.4 snapshot passed 61 tests with no failures or skips |
+| Thread Sanitizer | `xcodebuild test` with `-enableThreadSanitizer YES` passed all 61 tests, including concurrent host-clock access, registry, image-geometry, pool-notification, and result-code paths, with no failures, skips, or runtime warnings |
 | Swift 6.4 snapshot compile | `swift build --build-tests` passed |
 | WASM | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm` passed |
 | Embedded Swift | Swift 6.4 snapshot build with `swift-6.4.x-DEVELOPMENT-SNAPSHOT-2026-07-17-a_wasm-embedded` passed |
 | Embedded downstream runtime | OpenCoreMedia constructed `CVPackedPixelBuffer` through the public constrained initializer, linked the OpenCoreVideo attachment witness, and completed its WASI Smoke executable |
-| Regular-WASM attachment runtime | `OpenCoreVideoRuntimeSmoke` completed attachment init, set, lookup, replacement, batch set, filtered dictionary materialization, single removal, and remove-all |
-| Embedded-WASM attachment runtime | The same executable completed with the Embedded SDK and explicit `libswiftUnicodeDataTables.a` linkage |
+| Regular-WASM runtime | `OpenCoreVideoRuntimeSmoke` completed host-time reads plus attachment init, set, lookup, replacement, batch set, filtered dictionary materialization, single removal, and remove-all |
+| Embedded-WASM runtime | The same executable installed an Embedded clock provider and completed with explicit `libswiftUnicodeDataTables.a` linkage |
 
 Debug and release runtime Smokes pass on regular WASM and Embedded WASM. The
 pinned regular-WASI optimizer miscompiles allocation of the exact public
@@ -236,6 +240,10 @@ The behavior suite verifies:
 - known-format memory-layout mismatch failures;
 - sixteen packed, floating-point, depth, YCbCr, and alpha-planar description
   fixtures against Apple Core Video.
+- monotonic host-time reads and declared frequency/minimum-delta behavior;
+- typed unconfigured-provider failure and freeze-on-first-use lifecycle;
+- concurrent clock installation/read races preserving one active timebase;
+- independent Apple and portable host clocks satisfying their own timebases.
 
 ## Not implemented
 
@@ -252,3 +260,6 @@ Indexed/sub-byte, fractional block-packed YCbCr, Bayer/sensel, and compressed
 pixel-format descriptions remain inventory work because the current
 byte-addressed packed layout cannot represent their storage contract. The
 registry never fabricates a description for an unregistered format.
+
+`CVDisplayLink` is not future inventory: the installed SDK deprecates the entire
+family as of macOS 15, and this package intentionally excludes deprecated APIs.

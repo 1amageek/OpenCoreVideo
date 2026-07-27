@@ -9,8 +9,9 @@ typed and binary attachments, range and overlap validation, exactly-once
 external release, recyclable packed-buffer pools, and Apple runtime
 conformance fixtures are implemented. Clean-aperture, display-size, pixel-aspect,
 and origin geometry plus the Swift 6.4 pixel-format description registry are
-also implemented. Platform-native concrete adapters remain in their integration
-packages.
+also implemented. The non-deprecated Core Video host-time operations use a
+fixed, race-safe clock provider. Platform-native concrete adapters remain in
+their integration packages.
 
 ## Apple API review
 
@@ -27,6 +28,9 @@ read with `remark` on 2026-07-24:
 - [kCVPixelBufferPoolMinimumBufferCountKey](https://developer.apple.com/documentation/corevideo/kcvpixelbufferpoolminimumbuffercountkey)
 - [kCVPixelBufferPoolMaximumBufferAgeKey](https://developer.apple.com/documentation/corevideo/kcvpixelbufferpoolmaximumbufferagekey)
 - [CVPixelBufferPoolFlush](https://developer.apple.com/documentation/corevideo/cvpixelbufferpoolflush(_:_:))
+- [CVGetCurrentHostTime](https://developer.apple.com/documentation/corevideo/cvgetcurrenthosttime())
+- [CVGetHostClockFrequency](https://developer.apple.com/documentation/corevideo/cvgethostclockfrequency())
+- [CVGetHostClockMinimumTimeDelta](https://developer.apple.com/documentation/corevideo/cvgethostclockminimumtimedelta())
 
 Apple models a pixel buffer as an image-buffer reference with dimensions, pixel
 format, optional planes, attachments, and explicit lock/unlock access. The
@@ -55,6 +59,10 @@ rechecked on 2026-07-27 against the MacOSX 27.0 symbol graph,
 `CVImageBuffer.h`, `CVPixelBuffer.h`, `CVPixelFormatDescription.h`, and Apple
 runtime differential fixtures.
 
+The three active `CVHostTime.h` operations were reviewed with `remark` on
+2026-07-27. `CVDisplayLink.h` was also checked in the installed SDK; the entire
+family is deprecated as of macOS 15 and is intentionally omitted.
+
 ## Responsibility
 
 OpenCoreVideo owns:
@@ -65,6 +73,7 @@ OpenCoreVideo owns:
 - attachments associated with an image buffer;
 - explicit CPU access synchronization;
 - buffer pools and allocation thresholds;
+- a monotonic host-time source and its frequency contract;
 - storage leases that may represent host memory, shared memory, DMA memory,
   browser video frames, GPU resources, or opaque native handles;
 - zero-copy handoff contracts between media producers and consumers.
@@ -103,7 +112,8 @@ The public compatibility layer will implement the Swift-visible equivalents of:
 4. pixel-format identifiers and descriptions;
 5. base-address and plane access;
 6. `CVPixelBufferPool`;
-7. creation and release-callback operations.
+7. creation and release-callback operations;
+8. non-deprecated host-time operations.
 
 Apple-named declarations are added only after their Swift signatures have an API
 inventory entry and their semantics have a conformance test plan.
@@ -249,9 +259,48 @@ The pure-Swift configuration replaces Apple's Core Foundation dictionaries,
 allocator argument, out parameter, and status code with typed values, a returned
 buffer, and `CVPixelBufferError`. Unlike Apple's implicit one-second default
 age, the portable default does not age cached buffers because the shared target
-does not select a platform clock. Age eviction becomes active only when the
-caller supplies both `maximumBufferAgeNanoseconds` and a monotonic timestamp
-provider.
+does not bind pool policy to the global host clock. Age eviction becomes active
+only when the caller supplies both `maximumBufferAgeNanoseconds` and a
+monotonic timestamp provider.
+
+### Host time
+
+```text
+Platform monotonic clock
+          │ install before first use on Embedded
+          ▼
+CVHostClockProvider.system
+          │ Mutex<State>
+          ├── configurable(clock?)
+          └── active(clock) ──► CVGetCurrentHostTime
+                                CVGetHostClockFrequency
+                                CVGetHostClockMinimumTimeDelta
+```
+
+`CVHostClockProvider` protects one state representation with
+`Synchronization.Mutex` on native, regular WASM, and Embedded Swift. The first
+successful read freezes the provider, so the tick source, frequency, and
+minimum delta cannot be replaced independently while clients are converting
+time. Installation after activation and reading before configuration are typed
+failures. Clock callbacks execute after the mutex is released.
+
+Native and regular WASM use `ContinuousClock` and expose process-relative
+nanosecond ticks with a frequency of `1_000_000_000` and a minimum represented
+delta of one tick. This timebase supports elapsed-time conversion but is not
+claimed to share Apple's Core Audio host-time epoch. The pinned Swift 6.4
+Embedded module marks `ContinuousClock` unavailable, so a board or platform
+package must install its monotonic `CVHostClock` before first use. The
+Apple-compatible nonthrowing functions enforce missing configuration as a
+precondition rather than silently returning zero.
+
+| Target | Storage type | Isolation | Read entry point | Mutation entry point | Shutdown / owner release |
+|---|---|---|---|---|---|
+| Native | `Mutex<CVHostClockProvider.State>` | `Mutex` | `current()` | `install(_:)` before activation | Process-lifetime system provider retains the active clock |
+| Regular WASM | `Mutex<CVHostClockProvider.State>` | `Mutex` | `current()` | `install(_:)` before activation | Process-lifetime system provider retains the active clock |
+| Embedded WASM | `Mutex<CVHostClockProvider.State>` | `Mutex` | `current()` | Required `install(_:)` before activation | Process-lifetime system provider retains the injected clock |
+
+The target difference is only the availability of a default clock. Storage,
+isolation, `Sendable` conformance, and lifecycle transitions are identical.
 
 ### Binary attachments
 
@@ -443,6 +492,9 @@ new failure category requires an explicit ABI decision.
     subscriber termination, idempotent shutdown, and post-shutdown failure.
 15. [Complete] Implement the complete `CVReturn` constant range and exhaustive
     pixel-buffer error-to-status translation.
+16. [Complete] Implement the active host-time operations with a fixed provider,
+    explicit Embedded injection, and regular/Embedded WASM runtime checks.
+    Deprecated `CVDisplayLink` declarations are intentionally omitted.
 
 Each stage requires native conformance tests plus WASM and Embedded builds. A
 stage is not complete from declaration presence or module import tests alone.

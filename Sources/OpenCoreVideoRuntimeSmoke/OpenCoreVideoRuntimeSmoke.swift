@@ -1,8 +1,11 @@
 import OpenCoreVideo
+import Synchronization
 
 @main
 private enum OpenCoreVideoRuntimeSmoke {
     static func main() {
+        verifyHostClock()
+
         let attachments = CVBufferAttachments()
         let key = CVAttachmentKey(rawValue: "runtime-smoke")
         let attachment = CVBufferAttachment(
@@ -66,6 +69,31 @@ private enum OpenCoreVideoRuntimeSmoke {
         print("OpenCoreVideo runtime smoke: PASS")
     }
 
+    private static func verifyHostClock() {
+        #if hasFeature(Embedded)
+        do {
+            try CVHostClockProvider.system.install(RuntimeSmokeHostClock())
+        } catch {
+            fatalError("Embedded host clock installation failed: \(error)")
+        }
+        #endif
+
+        let first = CVGetCurrentHostTime()
+        let second = CVGetCurrentHostTime()
+
+        guard second >= first else {
+            fatalError("Host time moved backwards")
+        }
+        guard CVGetHostClockFrequency() == 1_000_000_000 else {
+            fatalError("Host clock frequency does not match its timebase")
+        }
+        guard CVGetHostClockMinimumTimeDelta() == 1 else {
+            fatalError("Host clock minimum time delta is invalid")
+        }
+
+        print("OpenCoreVideo runtime smoke: host clock PASS")
+    }
+
     // The pinned Swift 6.4 regular-WASI optimizer miscompiles construction of
     // this exact public Dictionary input before OpenCoreVideo receives it.
     @_optimize(none)
@@ -76,3 +104,19 @@ private enum OpenCoreVideoRuntimeSmoke {
         Dictionary(uniqueKeysWithValues: [(key, value)])
     }
 }
+
+#if hasFeature(Embedded)
+private final class RuntimeSmokeHostClock: CVHostClock, Sendable {
+    let frequency: Double = 1_000_000_000
+    let minimumTimeDelta: UInt32 = 1
+
+    private let time = Mutex<UInt64>(0)
+
+    func currentHostTime() -> UInt64 {
+        time.withLock { time in
+            time += 1
+            return time
+        }
+    }
+}
+#endif

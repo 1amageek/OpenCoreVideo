@@ -15,6 +15,7 @@ Statuses mean:
 - **Planned**: the Apple family has been identified but is not implemented.
 - **Adapter**: the semantic contract belongs here, while native API imports
   belong in another package.
+- **Omitted**: the SDK family is deprecated and is intentionally not added.
 
 ## Responsibility trace
 
@@ -28,7 +29,8 @@ Statuses mean:
 | Pixel buffer pools | `CVPixelBufferPool.h` | Generic pool, allocation/reuse/flush, bounded broadcast availability streams, subscriber termination, and shutdown | Implemented | Portable behavior and Apple threshold differential tests |
 | IOSurface-backed buffers | `CVPixelBufferIOSurface.h` | `CVPackedPlatformStorageLease` / `CVPlanarPlatformStorageLease` boundary | Adapter | Apple adapter conformance |
 | Metal buffers and textures | `CVMetalBuffer*.h`, `CVMetalTexture*.h` | Stable identity and scoped native-handle lease contract | Adapter | Cache lifetime and zero-copy projection tests |
-| Display timing | `CVDisplayLink.h`, `CVHostTime.h` | No declaration | Planned | Injected-clock and callback-order tests |
+| Host time | `CVHostTime.h` | `CVHostClock`, a freeze-on-first-use `CVHostClockProvider`, and the three non-deprecated `CVGet*Host*` operations | Implemented | Native contract tests plus regular and Embedded WASM runtime tests |
+| Display link | `CVDisplayLink.h` | No declaration | Omitted | The entire header is deprecated as of macOS 15; deprecated APIs are outside the package contract |
 | OpenGL families | `CVOpenGL*.h` | No declaration | Adapter | Separate legacy adapter decision |
 | Result codes | `CVReturn.h` | Complete constant range plus exhaustive `CVPixelBufferError` translation at the ABI boundary | Implemented | Constant and category-mapping behavior tests |
 
@@ -49,3 +51,10 @@ allocators, returned buffers, and `CVPixelBufferError`.
 The portable availability stream preserves the free-buffer notification
 semantics without Foundation; an Apple NotificationCenter bridge and
 status-code translation belong to an ABI adapter.
+
+The portable host-time operations use a process-relative nanosecond timebase on
+native and regular WASM. Generic Embedded deployments install a platform
+`CVHostClock` before first use because the pinned Swift 6.4 Embedded standard
+library does not provide `ContinuousClock`. Missing configuration is a typed
+`CVHostClockError`; the Apple-compatible nonthrowing operations enforce that
+precondition instead of returning a fabricated time.
